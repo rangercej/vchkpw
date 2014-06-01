@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-** $Id: safestring.c,v 1.1 1998/06/16 20:58:41 chris Exp $
+** $Id: safestring.c,v 1.5 1999/06/21 18:03:34 chris Exp $
 ** Replacements for strcpy() and strcat() that ensure bounds checking.
 **
 ** Chris Johnson, Copyright (C) April 1998
@@ -22,17 +22,22 @@
 **
 ******************************************************************************
 **
-** Both of these will return -1 if the bound is reached. These functions will
-** always put the last character of the string to 0, so the string length
-** cannot be exceeded.
+** scopy   == strcpy() with bounds checking
+** scat    == strcat() with bounds checking
+** slen    == strlen()
+** smatch  == strcmp()
 **
 *****************************************************************************/
 
-static char rcsid[] = "$Id: safestring.c,v 1.1 1998/06/16 20:58:41 chris Exp $";
+const static char rcsid[] = "$Id: safestring.c,v 1.5 1999/06/21 18:03:34 chris Exp $";
 
 int scopy(char *dest, const char *src, const int bound)
 {
 	int i;
+
+	if (!dest || !src)
+		return -1;
+
 	for (i=0; (src[i] != 0) && (i < (bound-1)); i++) {
 		dest[i] = src[i];
 	}
@@ -47,14 +52,39 @@ int scopy(char *dest, const char *src, const int bound)
 int scat(char *dest, const char *src, const int bound)
 {
 	int i,j;
-	for (i=0; dest[i] != 0; i++) /* nowt */;
+	for (i=0; (dest[i] != 0) && (i < bound); i++) /* nowt */;
 	for (j=0; (src[j] != 0) && ((i+j) < (bound-1)); j++) {
-		dest[i+j] = src[j];
+		if ((i+j) < bound)
+			dest[i+j] = src[j];
 	}
 	dest[i+j] = 0;
 
 	if ((i+j) >= (bound-1)) {
+		dest[bound-1] = 0;
 		return -1;
 	}
+
+	dest[i+j] = 0;
+
 	return 0;
+}
+
+unsigned long slen(const char *src)
+{
+	int i;
+	for (i=0; src[i] != 0; i++) /* do nowt */;
+	return i;
+}
+
+int smatch(const char *s1, const char *s2)
+{
+	int i;
+	for (i=0; s1[i] != 0; i++)
+		if (s1[i] != s2[i])
+			return 0;
+
+	if (s1[i] != s2[i])
+		return 0;
+
+	return 1;
 }

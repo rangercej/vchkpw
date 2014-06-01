@@ -1,0 +1,362 @@
+$Id: TECHNICAL,v 1.2 1999/04/09 19:11:02 chris Exp $
+-------------------------------------------------------------------------------
+TECHINCAL INFO (or how does the thing work??)
+==============
+Chris Johnson, April 1999
+
+Password File Format
+--------------------
+The password files used by vpasswd currently follow the format of a standard
+passwd file, however some fields have an alternative meaning. The file consists
+of records, one per line, each record consisting of 7 fields, seperated by
+colons. The fields are:
+	1. username (no limit on length)
+	2. password (encoded with crypt()) OR apop secret (in plain-text)
+	3. authentication method:
+		0 = Try both APOP and standard USER/PASS
+		1 = Use normal USER/PASS only
+		2 = Use APOP only
+	4. currently unused
+	5. currently unused - currently stores a description, but this field
+		is never referenced within vchkpw.
+	6. location of maildir (vchkpw equivalent of home directory)
+	7. currently unused
+
+
+Mail Delivery
+-------------
+Much of the mail delivery is handled by qmail's virtualdomains and users/assign
+mechanism. Say you have a virtual domain, acme.cej.net, and someone has sent
+and email to bert@acme.cej.net. The email goes thru' this process:
+
+1. The mail comes in to qmail-smtpd and follows the qmail path to
+   qmail-send without any modification.
+2. qmail-send examines control/virtualdomains and see's an entry for
+   acme.cej.net that reads "acme.cej.net:acme.cej.net". qmail-send
+   rewrites the recipient address to:
+       'acme.cej.net-bert@acme.cej.net'
+   and now treats the address as local (as stated in qmail-send),
+   so passes the email onto qmail-lspawn.
+3. qmail-lspawn reads the users/cdb file (built from users/assign) for
+   any possible matches. For acme.cej.net, assign contains an
+   entry like:
+   +acme.cej.net-:acme.cej.net:511:511:/home/popusers/domains/acme.cej.net:-::
+   Which means:
+        all mail for a recipient whos name beings with 'acme.cej.net-' should
+        be delivered to the directory /home/popusers/domains/acme.cej.net as
+        user 511, group 511, using '-' as the delimiter in .qmail filenames.
+   Essentially, this means that a delivery to a virtual domain can follow the
+   dot-qmail mechanism, each domain being treated like a ~alias directory.
+4. Assuming no other dot-qmail files exist, the mail will be fed to
+   .qmail-default which runs vdelivermail. This is where the qmail delivery
+   mechanism ends and the vchkpw mechanism begins.
+5. i) vdelivermail looks at the qmail-command variable $EXT for the username
+      - in this example, this is 'bert' - and $HOST for the hostname - in
+      this case, acme.cej.net.
+   ii) vdelivermail also reads /etc/passwd to look for the home directory of
+      vpopmail.
+   iii) vdelivermail now looks in the file ~vpopmail/domains/$HOST/vpasswd
+      for the user $EXT.
+   iv) If found, it then delivers it to the Maildir in the directory given in
+      the password file.
+   v) If NOT found, then it either bounces the mail, or delivers it to the
+      Maildir under the directory given as the second paramter on the command
+      line. (The first paramter exists for backwards compatability but is
+      depreciated).
+
+
+POP Mail Pickup
+---------------
+The password checking program, vchkpw, can end up doing quite a lor of work 
+- it ends up reading the user name and password then verifying against real
+users, pop users, and possibly doing both normal and APOP checks. Depending
+on the options chosen at compilation and the auth method defined for the user
+in the password file (see the password file format at the start of this
+document.
+
+It's operation is as follows:
+1. qmail-popup is invoked which reads in the username and password (or
+   APOP hash), and passes them on to the password checker, in this case
+   vchkpw, together with an APOP timestamp.
+2. vchkpw first checks to see if the user exists in /etc/passwd. If so, then
+   the following procedure is followed:
+   i) vchkpw attempts to open the APOP secrets file (/etc/apop-secrets by
+      default).
+   ii) If this succeeds, it is scanned for the user's secret. If this is 
+      found, then vchkpw will assume the user is logging in with APOP, so will
+      not try doing a match with the password in /etc/passwd.
+   iii) If (i) failed, or there was no match in (ii), vchkpw reads the password
+      from /etc/passwd (or /etc/shadow, if Shadow passwords are in use).
+   iv) vchkpw checks for a .qmail file in the user's home directory. If it is
+      found, it is scanned for delivery rules, so if a user has placed his
+      Maildir elsewhere, it can be picked up and used.
+   iv) The password/APOP hash entered by the remote user is now compared with
+      the expected password/hash (see step 4).
+3. If the user was not found in /etc/passwd, then the virtual users records
+   are checked. A user logs in as 'user@domain', however the '@' sign can
+   also be a '%' or '_' as well (depending on the definition of 'ATCHARS' in
+   vchkpw.c). The procedure is:
+   i) /etc/passwd is read to obtain the home directory of vpopmail.
+   ii) The domain part of the username is used to find the password file for
+      the domain, which is then opened (as ~vpopmail/<domain>/vpasswd).
+   iii) If (ii) fails, then the password file ~vpopmail/vpasswd is opened. If
+      this fails, then vchkpw aborts (step 6).
+   iv) Much as for real users now, the password file is scanned for the user.
+      If not found, vchkpw will abort.
+   v) The details are read, then the password or APOP hash is compared.
+4. When the passwords are compared, there is a flag that says is the password
+   expected is an MD5 hash (ie, APOP), a crypt(3) password, or a don't know:
+   a) For real users, if there was a valid entry in /etc/apop-secrets, then
+      the flag is set as APOP, else it defaults to crypt(3) based
+      authentication.
+   b) For virtual users, the third field of the virtual-users password file 
+      is the flag. This is described at the start of the document.
+   Another factor for the password checking depends on the >compile time<
+   options - vchkpw can be compiled to not do APOP or not do crypt(3) based
+   authorisation, hence forcing people to one method or another. Once vchkpw
+   has worked out what it's doing, it compares the passwords (crypt(3)) or
+   builds an MD5 hash of the expected result and compares hashes (APOP), then
+   will either abort, and pass control back to qmail-popup (step 6) if the
+   log in suceeded, or continue and pass control to qmail-pop3d.
+5. Assuming all has gone well, and the log in succeeded, vchkpw proceeds to
+   set the environment up for qmail-pop3d as follows:
+   i) It changes to the 'vchkpw' group (as given by vpopmail's entry in
+      /etc/passwd).
+   ii) It then changes to the user 'vpopmail'.
+   iii) It changes to the directory containing the user's Maildir (as given
+      in /etc/passwd or ~vpopmail/<domain>/vpasswd or ~vpopmail/vpasswd).
+   iv) It sets the USER, HOME and SHELL environment variables to those in the
+      appropriate password file
+   v) It passes control over to qmail-pop3d - control never returns to vchkpw
+      if the execvp() is sucessful.
+   If any of these fail, then vchkpw aborts (step 6).
+6. If vchkpw aborts abnormally, then what usually happens is a message will
+   be logged to syslog at mail.notice, then vchkpw terminates, passing control
+   of the POP session back to qmail-popup, which displays a '-ERR' message,
+   terminates the POP connection, then shuts itself down.
+
+
+Messages from syslog and bounces
+--------------------------------
+Both vchkpw and vdelivermail will use syslog to report any problems. vchkpw
+can be compiled to never log messages as well...it's up to you how much you
+want logged. vdelivermail's messages go thru' qmail's splogger. vdelivermail
+also will give error messages in bounces, so if you are sent a bounce, or
+recieve one trying to send to a user in your system, then...
+
+Priority     Program       Message & description
+-----------  -------       ---------------------------------------------------
+mail.info    vchkpw        "(virtual, %s) Login from %s@%s"
+                              Sucessful login for the virtual user.
+
+mail.info    vchkpw        "(real, %s) Login from %s"
+                              Sucessful login for the real user.
+
+mail.notice  vchkpw        "(virtual) Failed login attempt with '%s@%s'"
+                              Someone gave the wrong password for the given
+                              virtual user.
+
+mail.notice  vchkpw        "(real) Failed login with '%s'"
+                              Wrong password or hash for the given real user.
+
+mail.notice  vchkpw        "pop: vpop user does not exist"
+                              The 'vpopmail' user could not be found in
+                              /etc/passwd, therefore no details (eg, location
+                              of domain mailboxes) could not be found. Big
+                              setup problem!
+
+mail.notice  vchkpw        "real: could not open APOP secrets"
+                              If APOP is compiled in, then /etc/apop-secrets
+                              must exist - even if it is zero bytes in length.
+                              Or it could just be a permissions problem.
+
+mail.notice  vchkpw        "real: password is empty"
+                              For security, empty password fields are banned.
+
+mail.notice  vchkpw        "real: passwords don't match"
+                              The user's password didn't match the expexted
+                              password.
+
+mail.notice  vchkpw        "main: Read error"
+                              Something failed in the communication between
+                              vchkpw and qmail-popup (read(2) returned -1).
+
+mail.notice  vchkpw        "main: No username given"
+                              The supplied POP username was empty.
+
+mail.notice  vchkpw        "main: No password given"
+                              The supplied password was empty.
+
+mail.notice  vchkpw        "main: No user found"
+                              Could not find any users, real or virtual,
+                              matching the supplied username.
+
+mail.notice  vchkpw        "main: setgid() failed"
+                              Could not change to the 'vchkpw' group (as given
+                              by vpopmail's entry in /etc/passwd).
+
+mail.notice  vchkpw        "main: setuid() failed"
+                              Could not change to the 'vpopmail' user (as
+                              given by vpopmail's entry in /etc/passwd).
+
+mail.notice  vchkpw        "main: chdir() failed"
+                              Could not change the user directory given in the 
+                              password file.
+
+mail.notice  vchkpw        "main: execvp() failed"
+                              Failed to pass control over to qmail-pop3d.
+
+<splogger>   vdelivermail  "EACCES: permission denied"
+                           "EPERM: permission denied"
+                           "ENOENT: path doesn't exist"
+                           "ENOMEM: out of kernel memory"
+                           "EROFS: filesystem read-only"
+                           "Other code: %d"
+                           "Yikes! Could create but can't delete temporary
+                            file!!"
+                              All these messages indicate a big cock-up some
+                              where in the works. A temporary file was created
+                              in ~user/Maildir/tmp, but it could not be
+                              deleted!
+
+<bounce>     vdelivermail  "POP users have not been set up correctly on this
+                            system. Please contact %s with this problem.
+                            (#4.3.0)"
+                              Could not find 'vpopmail' in /etc/passwd. Big
+                              setup problem.
+
+<bounce>     vdelivermail  "Can't confirm users existance... (#5.1.1)"
+                              Could not open the correct password file. Are
+                              permissions, UID's, GID's &tc... correct?
+
+<splogger>   vdelivermail  "Message timeout (#4.3.0)"
+                              It took more than 24 hours to try a single 
+                              delivery...should never occur. If it does, then
+                              there may be a network (NFS, NIS?) or filesystem
+                              problem.
+
+<splogger>   vdelivermail  "Can't change to %s (#4.2.1)"
+                              Could not change to the user's directory that
+                              contains his Maildir. Permissions or setup
+                              problem?
+
+<splogger>   vdelivermail  "Can't change to Maildir (#4.2.1)"
+                              Can't change to the Maildir in the user's
+                              directory.
+
+<splogger>   vdelivermail  "Unable to stat maildir (#4.3.0)"
+                              stat(2) on Maildir/tmp failed. Three attempts
+                              to create a temporary file failed.
+
+<splogger>   vdelivermail  "Can't create tempfile (#4.3.0)"
+                              Could not create temporary file.
+
+<splogger>   vdelivermail  "Failed to write RP & DT (#4.3.0)"
+                              Tried to add a Return-Path and Delivered-To
+                              header to the message, but write(2) failed.
+
+<splogger>   vdelivermail  "Failed to write to tmp/ (#4.3.0)"
+                              Tried to write the incoming message to
+                              the temporary file, but write(2) failed.
+
+<splogger>   vdelivermail  "Error occoured reading message (#4.3.0)"
+                              The message was less than zero bytes in length.
+                              As this is clearly an impossibility, reading
+                              (via read(2)) the incoming message from
+                              qmail-lspawn(8) failed.
+
+<splogger>   vdelivermail  "Unable to sync file (#4.3.0)"
+                              fsync(2) on the temporary file failed.
+
+<splogger>   vdelivermail  "Unable to close() tmp file (#4.3.0)"
+                              close(2) failed for the temporary file...!
+
+<splogger>   vdelivermail  "Unable to link tmp to new (#4.3.0)"
+                              Could not do the final delivery of the mail
+                              (link(2) from Maildir/tmp to Maildir/new failed).
+
+<splogger>   vdelivermail  "Syntax: %s [prefix [bounceable_mail]]"
+                              There is a cock-up on the command line...check
+                              the dot-qmail files!
+
+<splogger>   vdelivermail  "success: %s:%s:%s/did 0+0 1"
+                              The three variables are $EXT, $USER, $HOST as
+                              described in qmail-command(8).
+
+<splogger>   vdelivermail  "failure: %s:%s:%s/Reason for failure: /Unknown
+                            local POP user %s (#5.1.1)"
+                              Could not find the virtual user in any password
+                              files (results in a bounce).
+
+<splogger>   vdelivermail  "success: %s:%s:%s/POP user does not exist, but
+                            will deliver to %s/did 0+0+1"
+                              The POP user was not found in any password
+                              files, but the mail was delivered to the
+                              'catch-all' Maildir (usually the postmaster) 
+                              given on the command line.
+
+<splogger>   vdelivermail  "deferral: %s:%s:%s/POP user does not exist, but
+                            will deliver to %s/Can't change to %s(#4.2.1)/"
+                              An amalgamation of several error messages, but
+                              indicates that the directory given as the
+                              'catch-all' could not be changed to - does it
+                              exist? or is it a permissions problem?
+
+<splogger>   vdelivermail  "POP user does not exist, but will deliver to %s"
+                              If there is a collection directory for mail
+                              that can't be delivered due to a user's lack
+                              of existance, vdelivermail will deliver to that
+                              Maildir instead of bouncing.
+
+<varies>     any           "vgetpw: could not chdir() to ~vpopmail (%s)
+                             (#4.2.1)"
+                              Failed to change to vpopmail's home directory.
+                              Is this a permissions problem? Or maybe the
+                              /etc/passwd entry is incorrect.
+
+<varies>     any           "vgetpw: could not chdir() to domains/ (#4.2.1)"
+                              Failed to change to ~vpopmail/domains - again,
+                              a permissions problem?
+
+<varies>     any           "vgetpw: could not chdir() to domain %s
+                            (#4.2.1)"
+                              The destination domain exists, not there was
+                              a problem changing to its directory...
+                              permissions?
+
+<varies>     any           "vgetpw: could not find domain %s (#5.5.0)"
+                              vchkpw was told to manage the given domain, but
+                              it couldn't find a directory for the domain (ie,
+                              ~vpopmail/domains/<domain> doesn't exist)
+
+<varies>     any           "vgetpw: could not find a password file for domain
+                            %s (#4.3.5)"
+                              What happened to the domains password file,
+                              vpasswd or vpasswd.cdb?
+
+<varies>     any           "vgetpw: could not open db for domain %s - reverting
+                            to ascii (#2.3.0)"
+                              A CDB password file exists for the domain, but
+                              it couldn't be opened (permissions?)...falling
+                              back to the traditional text-file passwords (ie,
+                              vpasswd)
+
+<varies>     any           "vgetpw: could not open a pw file for domain %s
+                            (#4.3.0)"
+                              Password files exist, but they can't be opened.
+                              Permssions problem?
+
+<varies>     any           "vgetpw: user %s@%s not found in vpasswd (#5.1.1)"
+                              The user doesn't exist in the text password file
+                              (vpasswd).
+
+<varies>     any           "vgetpw: read error in database for %s@%s (#4.3.0)"
+                              Problems reading vpasswd.cdb - maybe corrupted?
+
+<varies>     any           "vgetpw: user %s@%s not found in database (#5.1.1)"
+                              The user doesn't exist in the database password
+                              file (vpasswd.cdb).
+
+vdelivermail may produce other amalgamations of error messages depending on
+what actually went wrong :) So checking each part of the error message is
+usually a good idea :)

@@ -1,9 +1,9 @@
-/****************************************************************************
+/*****************************************************************************
 **
-** $Id: safestring.h,v 1.3 1999/02/21 13:23:05 chris Exp $
-** Safestring -- header file
+** $Id$
+** This will process the aliases file
 **
-** Chris Johnson, Copyright (C) April 1998
+** Chris Johnson, Copyright (C) July 1998
 ** Email: sixie@nccnet.co.uk
 **
 **    This program is free software; you can redistribute it and/or modify
@@ -20,9 +20,15 @@
 **    along with this program; if not, write to the Free Software
 **    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 **
-****************************************************************************/
+*****************************************************************************/
 
-int scopy(char *, const char*, const int);
-int scat(char *, const char*, const int);
-unsigned long slen(const char *);
-int smatch(const char *, const char*);
+#include <stdio.h>
+#include <cdb.h>
+
+#ifdef SYSLOG
+#include <syslog.h>
+#endif
+
+#include "safestring.h"
+#include "common.h"
+

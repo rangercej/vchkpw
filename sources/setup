@@ -1,7 +1,7 @@
 #!/bin/sh
 ##############################################################################
 ##
-## $Id: setup,v 1.1 1998/06/16 21:12:11 chris Exp $
+## $Id: setup,v 1.3 1999/02/06 14:52:00 chris Exp $
 ## This gets basic installation out of the way.
 ##
 ##############################################################################
@@ -43,12 +43,8 @@ fi
 cat <<-!
 	-----------------------------------------------------------------------
 
-	Vchkpw 3.0
+	Vchkpw 3.5
 	==========
-
-	(Standard blurb)...Welcome to version 3 of this virtual domains
-	packages. There are several enhancements and improvements to this
-	since the last release. This program is one of them :-)
 
 	I am assuming you are using the "$VPOPUSER" user. If you are not, then
 	you will have to change some information in various scripts. Please
@@ -85,7 +81,7 @@ and if you are going to be using the CGI as well,
 fi
 
 echo "Okay...checking to see if $VPOPUSER exists in /etc/passwd..."
-grep "^$VPOPUSER\:" /etc/passwd > /dev/null 2>&1
+grep "^$VPOPUSER:" /etc/passwd > /dev/null 2>&1
 if [ $? -eq 1 ]
 then
 	cat <<-!
@@ -101,7 +97,7 @@ then
 	exit
 fi
 
-grep "^$VPOPGRP\:\:[0-9]*\:" /etc/group > /dev/null 2>&1
+grep "^$VPOPGRP:[^:]*:[0-9]*:" /etc/group > /dev/null 2>&1
 if [ $? -eq 1 ]
 then
 	cat <<-!
@@ -115,7 +111,7 @@ then
 	exit
 fi
 
-details=`grep "^$VPOPUSER\:" /etc/passwd`
+details=`grep "^$VPOPUSER:" /etc/passwd`
 uid=`echo $details | cut -d: -f3`
 gid=`echo $details | cut -d: -f4`
 vhome=`echo $details | cut -d: -f6`
@@ -126,7 +122,11 @@ then
 	cat <<-!
 	-----------------------------------------------------------------------
 
-	Hmm...I couldn't change to $VOPUSER's home directory ($vhome).
+	Hmm...I couldn't change to $VOPUSER's home directory. The
+	directory in /etc/passwd isn't a symbolic link is it?
+		\`pwd\`  = `pwd`
+		\$vhome = $vhome
+
 	Sorry, I can't continue.
 
 	-----------------------------------------------------------------------
@@ -140,7 +140,7 @@ then
 	-----------------------------------------------------------------------
 
 	I've found that $vhome/bin/vchkpw already exists -- this
-	this implies you are upgrading from an older version. To ensure that
+	implies you are upgrading from an older version. To ensure that
 	during the install deliveries are successful, I recommend you stop
 	qmail. (90% of the time it will probably be okay *BUT* it is safer
 	if no deliveries come in).
@@ -241,7 +241,7 @@ cat <<-!
 
 	Enjoy!
 
-	Chris J, April 1998
+	Chris J, February 1999
 
 	-----------------------------------------------------------------------
 !

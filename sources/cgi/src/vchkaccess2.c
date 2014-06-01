@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-** $Id: vchkaccess.c,v 1.5 1999/04/07 20:17:20 chris Exp $
+** $Id: vchkaccess.c,v 1.3 1998/06/23 19:32:51 chris Exp $
 ** Vchkaccess -- Part of the CGI package for virtual domain admin.
 **
 ** Chris Johnson, Copyright (C) April 1998
@@ -38,9 +38,27 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <pwd.h>
+/* laercio - 2 #include were added */
+/* note - NAME_MAX was defined as 200 (very wide limit) because */
+/* I have NAME_MAX definition just in limits.h - but it */
+/* is commented out */
+
+#include <crypt.h>
+#include <strings.h>
+#define NAME_MAX 200
+
+/* laercio -end */
+
 #include "safestring.h"
 
-static const char rcsid[] = "$Id: vchkaccess.c,v 1.5 1999/04/07 20:17:20 chris Exp $";
+/* laercio - static char rcsid[] was made const */
+
+/*
+static char rcsid[] = "$Id: vchkaccess.c,v 1.3 1998/06/23 19:32:51 chris Exp $";
+*/
+const static char rcsid[] = "$Id: vchkaccess.c,v 1.3 1998/06/23 19:32:51 chris Exp $";
+
+/* laercio - end */
 
 char buf[200];
 char VPOPROOT[NAME_MAX];
@@ -49,15 +67,21 @@ void ack(char *message, int die)
 {
 	printf ("%d: %s: %s\n",die,message,buf);
 	fflush(stdout);
-	exit(die);
+	_exit(die);
 }
 
 char randltr(void)
 {
-        char rnd;
         char retval = 'a';
 
+/* laercio - C compiler rand() funcion instead of random() */
+/* note: also changed rand variable name to rnd */
+/*
+        rand = random() % 64;
+*/
+        char rnd;
         rnd = rand() % 64;
+
 
         if (rnd < 26)
                 retval = rnd + 'a';
@@ -80,7 +104,13 @@ char *mkpasswd(char *passwd)
 	time_t tm;
 
         time(&tm);
+/* laercio - C compiler srand() funcion instead of srandom() */
+/*
+        srandom (tm % 65536);
+*/
+
         srand (tm % 65536);
+/* laercio - end */
 
 	bzero(pw,sizeof(pw));
 	salt[0] = randltr();
@@ -108,27 +138,59 @@ void mklink()
 
 void delfiles (char *dir)
 {
+/* laercio - using DIR instead of struct dirent */
+/* note: variable n commented out - no longer needed */
+/*
+	struct dirent **namelist;
+	int n;
+*/
+
 	DIR *directory;
 	struct dirent *file;
+/* laercio - end */
 
 	if (chdir(dir) == -1) ack("Failed to cd to directory",301);
-	if ((directory = opendir(".")) == NULL)
-		ack ("Yikes! Failed to open directory",302);
+
+/* laercio - like your changes to vchkexpire.c */
+/* note dir variable name changed to directory */
+/*
+	n = scandir(".", &namelist, 0, alphasort);
+	if (n < 0) ack ("Failed to scandir()",302);
+*/
+	if ((directory = opendir(".")) == NULL) {
+		ack ("Yikes! Could not open file/directory.",3);
+	}
+
+/* laercio - end */
 
 #ifdef DEBUG
-	fprintf(stderr,"delfiles: chdir to %s okay\n",dir);
+		fprintf(stderr,"delfiles: chdir to %s okay\n",dir);
 #endif
 
+/* laercio - like your changes to vchkexpire.c */
+/*
+	while(n--) {
+*/
 	while ((file = readdir(directory)) != NULL) {
+
+/* laercio - end */
+
 #ifdef DEBUG
 		fprintf(stderr,"delfiles: Deleting %s\n",namelist[n]->d_name);
 #endif
+
+/* laercio - like your changes to vchkexpire.c */
+/*
+		if (unlink(namelist[n]->d_name) == -1) {
+			if (strcmp(namelist[n]->d_name,".") && strcmp(namelist[n]->d_name,".."))
+*/
 		if (unlink(file->d_name) == -1) {
 			if (strcmp(file->d_name,".") && strcmp(file->d_name,".."))
 				ack ("Failed to delete directory",303);
 		}
+
+/* laercio - end */
 	}
-	closedir (directory);
 	if (chdir("..") == -1) ack("Failed to cd to parent",304);
 	if (rmdir(dir) == -1) ack("Failed to remote directory",305);
 }
@@ -348,7 +410,7 @@ void adduser (char *info)
 	} else {
 		scopy(pw,newpw,sizeof(pw));
 	}
-	fprintf(npwd,"%s:%s:%s:0:Pop User by CGI:%s/domains/%s/%s:NOLOGIN\n",user,pw,type,VPOPROOT,domain,user);
+	fprintf(npwd,"%s:%s:%s::Pop User by CGI:%s/domains/%s/%s:NOLOGIN\n",user,pw,type,VPOPROOT,domain,user);
 	fclose (npwd); fclose(fpwd);
 	mklink();
 	puts ("ok");
@@ -513,5 +575,12 @@ int main()
 #ifdef DEBUG
 	fputs ("main: about to exit\n",stderr);
 #endif
+/* laercio - using exit() instead of _exit() */
+/*
+	_exit(0);
+*/
 	exit(0);
+
+/* laercio - end */
 }
+

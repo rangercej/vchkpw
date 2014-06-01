@@ -1,7 +1,7 @@
 #!/bin/sh
 ###############################################################################
 ##
-## $Id: vdeluser,v 1.1 1998/06/16 21:08:28 chris Exp $
+## $Id: vdeluser,v 1.2 1998/08/16 17:14:29 chris Exp $
 ## vdeluser - 2.0
 ##
 ## Chris Johnson, Copyright (C) April 1998
@@ -25,7 +25,7 @@
 trap "" 1 2 3 15
 
 PATH="`dirname $0`:$PATH"
-export $PATH
+export PATH
 
 POPACCT=vpopmail
 POPGRP=vchkpw

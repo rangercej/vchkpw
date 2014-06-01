@@ -1,42 +1,32 @@
-/* MD5.H - header file for MD5C.C
- */
-
 /*
-	$Id: md5.h,v 1.1 1998/06/16 20:58:06 chris Exp $
-	>>>> The file should never need editing <<<<
+        $Id: md5.h,v 1.2 1999/04/07 20:40:16 chris Exp $
+        >>>> The file should never need editing <<<<
 */
 
-/* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
-rights reserved.
+#ifndef _MD5_H
+#define _MD5_H
 
-License to copy and use this software is granted provided that it
-is identified as the "RSA Data Security, Inc. MD5 Message-Digest
-Algorithm" in all material mentioning or referencing this software
-or this function.
+#ifdef __alpha
+typedef unsigned int uint32;
+#else
+typedef unsigned long uint32;
+#endif
 
-License is also granted to make and use derivative works provided
-that such works are identified as "derived from the RSA Data
-Security, Inc. MD5 Message-Digest Algorithm" in all material
-mentioning or referencing the derived work.
+struct MD5Context {
+	uint32 buf[4];
+	uint32 bits[2];
+	unsigned char in[64];
+};
 
-RSA Data Security, Inc. makes no representations concerning either
-the merchantability of this software or the suitability of this
-software for any particular purpose. It is provided "as is"
-without express or implied warranty of any kind.
+void MD5Init(struct MD5Context *context);
+void MD5Update(struct MD5Context *context, unsigned char const *buf,
+	       unsigned len);
+void MD5Final(unsigned char digest[16], struct MD5Context *context);
+void MD5Transform(uint32 buf[4], uint32 const in[16]);
 
-These notices must be retained in any copies of any part of this
-documentation and/or software.
+/*
+ * This is needed to make RSAREF happy on some MS-DOS compilers.
  */
+typedef struct MD5Context MD5_CTX;
 
-/* MD5 context. */
-typedef struct {
-  UINT4 state[4];                                   /* state (ABCD) */
-  UINT4 count[2];        /* number of bits, modulo 2^64 (lsb first) */
-  unsigned char buffer[64];                         /* input buffer */
-} MD5_CTX;
-
-void MD5Init PROTO_LIST ((MD5_CTX *));
-void MD5Update PROTO_LIST
-  ((MD5_CTX *, unsigned char *, unsigned int));
-void MD5Final PROTO_LIST ((unsigned char [16], MD5_CTX *));
-
+#endif /* !MD5_H */
