@@ -1,0 +1,67 @@
+$Id: BLURB,v 1.1 1998/06/16 21:15:31 chris Exp $
+
+vchkpw 3.0
+==========
+Chris Johnson, sixie@nccnet.co.uk, April 1998
+
+Okay...so why yet another virtual domains package? Answer: I had problems
+trying to get the currently available ones to work so I wrote my own check
+virtual password program (by hacking Dan's checkpassword), and it sorta grew
+from there...
+
+In the process I've ended up getting a rather good idea of how qmail works :)
+
+Features:
+	* Dynamic delivery - no need to have dozens of .qmail files all over
+		the place. Just a single .qmail-default handles all the
+		deliveries
+
+	* Shadow password support - something that seemed to be lacking in
+		the other programs
+
+	* Only takes up 1 entry in /etc/passwd - everything runs under a
+		single UID/GID
+
+	* Decent documentation - actually, some docs I've come across for
+		this are pretty good, but I had a bugger of a time getting
+		the things working (probably 'cos I'm using shadow'd passwords
+		on my own Linux box).
+
+	* Delivers direct to a Maildir for use with qmail-pop3d
+
+Possible things against this package:
+	* Absolutely no support whatsoever for mbox format mail boxes. This is
+		a totally Maildir defined package.
+
+I'm not saying that other programs don't support the list above, but I'm
+offering an alternative...take yer pick :)
+
+The rest of this file is devoted to general nonsense...if you have something
+you might want to contribute, then email me at sixie@nccnet.co.uk - if you're
+lucky, you'll get a mention in the CREDITS file, should I do another release
+of this package :)
+
+	"I'm pink therefore I'm spam"
+
+	Error WIN.INI not found. Delete C:\WINDOWS?
+		(Y)es   (G)o ahead   (S)ure
+
+	Frontal lobe exception error: Intellect not installed
+
+	Kernel: Panic: out of caffeine
+
+	Kernel: Panic: out of choclate
+
+	N: Phil Lewis
+	E: beans@bucket.ualr.edu
+	D: Promised to send money if I would put his name in the source tree.
+	S: PO Box 371
+	S: North Little Rock, Arkansas 72115
+	S: US
+		-- Excerpt from Linux kernel CREDITS file
+
+	First off, I'd suggest printing out a copy of the GNU coding standards,
+	and NOT read it.  Burn them, it's a great symbolic gesture. 
+		-- From Documentation/CodingStyle in the Linux source tree
+
+

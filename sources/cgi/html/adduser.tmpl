@@ -1,0 +1,45 @@
+<!-- $Id: adduser.tmpl,v 1.1 1998/06/16 21:27:45 chris Exp $ -->
+<HTML>
+<HEAD><TITLE>%%DOMAIN: Add a user</TITLE></HEAD>
+<BODY>
+	<H1>Add a user</H1>
+	<HR>
+	Please enter the new user's name and password. You are required to
+	type the password twice. This is to make sure that you typed it
+	correctly.<BR>
+	<FORM ACTION="%%URL" METHOD=post>
+		%%AUTH
+		<INPUT TYPE=hidden NAME=location VALUE=add>
+		<TABLE>
+			<TR>	<TD>New user name:</TD>
+				<TD><INPUT NAME=user SIZE=20></TD>
+			</TR>
+			<TR>	<TD>Password:</TD>
+				<TD><INPUT NAME=passwd SIZE=20 TYPE=password></TD>
+			</TR>
+			<TR>	<TD>Password again:</TD>
+				<TD><INPUT NAME=check SIZE=20 TYPE=password></TD>
+			</TR>
+			<TR>	<TD COLSPAN=2>
+					Authentication type:
+					<UL>
+						<INPUT TYPE=radio NAME=type VALUE=1 CHECKED> User/password (if unsure, leave this selected)<BR>
+						<INPUT TYPE=radio NAME=type VALUE=2> APOP<BR>
+					</UL>
+				</TD>
+			</TR>
+			<TR>	<TD ALIGN=right><INPUT TYPE=reset VALUE="Clear form"></TD>
+				<TD><INPUT TYPE=submit VALUE="Add user"></TD>
+			</TR>
+		</TABLE>
+	</FORM>
+	<HR>
+	<FORM ACTION="%%URL" METHOD=post>
+		%%AUTH
+		<INPUT NAME=location VALUE=menu TYPE=hidden>
+		<INPUT TYPE=submit VALUE="Return to menu">
+	</FORM>
+	<HR>
+	<B><I>REMEMBER:</I> <A HREF="%%URL">Log out</A></B> after use!!
+</BODY>
+</HTML>

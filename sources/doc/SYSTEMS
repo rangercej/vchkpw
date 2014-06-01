@@ -1,0 +1,7 @@
+$Id: SYSTEMS,v 1.1 1998/06/16 21:15:31 chris Exp $
+
+vchkpw has been verified as working on the platforms listed below. Please
+let me know of other platforms that it runs on!
+
+	linux-2.0.29
+	linux-2.0.33

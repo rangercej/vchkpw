@@ -1,0 +1,120 @@
+#!/bin/sh
+###############################################################################
+##
+## $Id: vdeluser,v 1.1 1998/06/16 21:08:28 chris Exp $
+## vdeluser - 2.0
+##
+## Chris Johnson, Copyright (C) April 1998
+## Email: sixie@nccnet.co.uk
+##
+##    This program is free software; you can redistribute it and/or modify
+##    it under the terms of the GNU General Public License as published by
+##    the Free Software Foundation; either version 2 of the License, or
+##    (at your option) any later version.
+##
+##    This program is distributed in the hope that it will be useful,
+##    but WITHOUT ANY WARRANTY; without even the implied warranty of
+##    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+##    GNU General Public License for more details.
+##
+##    You should have received a copy of the GNU General Public License
+##    along with this program; if not, write to the Free Software
+##    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+##
+###############################################################################
+trap "" 1 2 3 15
+
+PATH="`dirname $0`:$PATH"
+export $PATH
+
+POPACCT=vpopmail
+POPGRP=vchkpw
+
+###############################################################################
+## No user servicable parts below
+###############################################################################
+
+POPUSER=`echo $1 | cut -d@ -f1`
+echo $1 | grep '\@' > /dev/null 2>&1
+if [ $? -eq 0 ]
+then
+	HOST=`echo $1 | cut -d@ -f2`
+else
+	HOST='';
+fi
+
+grep "^${POPACCT}\:" /etc/passwd > /dev/null 2>&1
+if [ $? -ne 0 ]
+then
+	echo "Cannot find master POP user $POPACCT in /etc/passwd"
+	exit 
+else
+	POPHOME=`grep "^${POPACCT}\:" /etc/passwd | cut -d: -f6`
+	if [ "x$HOST" = "x" ]
+	then
+		PASSWD="$POPHOME/vpasswd"
+		PBAK="$POPHOME/vpasswd-"
+		PLOCK="$POPHOME/.pwd.lock"
+		HOMEDIR="$POPHOME/users"
+	else
+		PASSWD="$POPHOME/domains/$HOST/vpasswd"
+		PBAK="$POPHOME/domains/$HOST/vpasswd-"
+		PLOCK="$POPHOME/domains/$HOST/.pwd.lock"
+		HOMEDIR="$POPHOME/domains/$HOST"
+	fi
+fi
+
+if [ x`whoami` != xroot ]; then
+	echo "You should be root to run this!!"
+	exit 1
+fi
+
+if [ $# -eq 0 ]
+then
+	echo "Syntax: `basename $0` <POP login>"
+	echo ""
+	exit
+fi
+
+if [ ! -d $HOMEDIR ]
+then
+	echo "Directory $HOMEDIR dosent exist."
+	echo "Aborting"
+	exit
+fi
+	
+
+grep "^${POPUSER}\:" $PASSWD > /dev/null 2>&1
+if [ $? -ne 0 ]
+then
+	echo "The login $POPUSER does not exist."
+	exit 1
+fi
+
+if [ -f $PLOCK ]; then
+	echo "$PASSWD is locked - someone else deleting users from the"
+	echo "POP system? If you are *sure* this is an error, then delete"
+	echo "the file $PLOCK"
+	exit 1
+fi
+touch $PLOCK
+
+echo ""
+echo "Deleting POP user $POPUSER..."
+
+echo "    Removing entry from vpasswd..."
+grep -v "^$POPUSER\:" < $PASSWD > $PASSWD.new
+cp $PASSWD $PBAK
+mv $PASSWD.new $PASSWD
+chmod 644 $PASSWD
+
+rm -f $PLOCK
+
+echo "    Deleting $HOMEDIR/$POPUSER..."
+rm -rf $HOMEDIR/$POPUSER
+
+chown $POPACCT $PASSWD
+chgrp $POPGRP $PASSWD
+chmod 600 $PASSWD $PBAK
+
+echo "Okay - deleted $1 from the POP system"

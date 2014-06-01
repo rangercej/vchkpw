@@ -1,0 +1,42 @@
+<!-- $Id: passwd.tmpl,v 1.1 1998/06/16 21:27:45 chris Exp $ -->
+<HTML>
+<HEAD><TITLE>%%DOMAIN: Change a password</TITLE></HEAD>
+<BODY>
+	<H2>Change a password</H2>
+	<HR>
+	<FORM ACTION="%%URL" METHOD=post>
+		%%AUTH
+		<INPUT NAME=location VALUE=passuser TYPE=hidden>
+		<TABLE>
+			<TR>	<TD ALIGN=right>Select user:</TD>
+				<TD>%%USERLIST
+				</TD>
+			<TR>	<TD ALIGN=right>Enter new password:</TD>
+				<TD><INPUT NAME=new TYPE=password></TD>
+			</TR>
+			<TR>	<TD ALIGN=right>Type new password again:</TD>
+				<TD><INPUT NAME=check TYPE=password></TD>
+			</TR>
+			<TR>	<TD ALIGN=right VALIGN=top>Authentication type:</TD>
+				<TD>
+					<INPUT TYPE=radio NAME=type VALUE=0 CHECKED> Use current auth type (default - if unsure, leave asis)<BR>
+					<INPUT TYPE=radio NAME=type VALUE=1> User/password<BR>
+					<INPUT TYPE=radio NAME=type VALUE=2> APOP<BR>
+				</TD>
+			</TR>
+			<TR>	
+				<TD ALIGN=right><INPUT TYPE=reset VALUE="Clear form"></TD>
+				<TD><INPUT TYPE=submit VALUE="Change password"></TD>
+			</TR>
+		</TABLE>
+	</FORM>
+	<HR>
+	<FORM ACTION="%%URL" METHOD=post>
+		%%AUTH
+		<INPUT NAME=location VALUE=menu TYPE=hidden>
+		<INPUT TYPE=submit VALUE="Return to menu">
+	</FORM>
+	<HR>
+	<B><I>REMEMBER:</I> <A HREF="%%URL">Log out</A></B> after use!!
+</BODY>
+</HTML>

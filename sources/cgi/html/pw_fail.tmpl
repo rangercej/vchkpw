@@ -1,0 +1,21 @@
+<!-- $Id: pw_fail.tmpl,v 1.1 1998/06/16 21:27:45 chris Exp $ -->
+<HTML>
+<HEAD><TITLE>%%DOMAIN: Failed to change password</TITLE></HEAD>
+<BODY>
+	<H1>Problem changing %%USER's password</H1>
+	<HR>
+	<H2>Reason:</H2>
+	%%MESSAGE<P>
+	<HR>
+	<FORM ACTION="%%URL" METHOD=post>
+		%%AUTH
+		I want to <SELECT NAME=location>
+			<OPTION VALUE=chpasswd>Try and change a password again
+			<OPTION VALUE=menu>Return to main menu
+		</SELECT>
+		<INPUT TYPE=submit VALUE="Do it!">
+	</FORM>
+	<HR>
+	<B><I>REMEMBER:</I> <A HREF="%%URL">Log out</A></B> after use!!
+</BODY>
+</HTML>

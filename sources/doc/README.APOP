@@ -1,0 +1,181 @@
+$Id: README.APOP,v 1.1 1998/06/16 21:15:31 chris Exp $
+-------------------------------------------------------------------------------
+
+Notes about the APOP implementation in vchkpw
+=============================================
+
+What is APOP?
+-------------
+APOP is an alternative authentication procedure for POP3 servers and clients.
+Instead of sending a user/password pair as plaintext over a network, it sends
+a mailbox identifier (aka username), and a cryptographic hash of the password
+hence an eavesdropper cannot simply browse through a log of TCP packets to
+gain passwords.
+
+APOP is described in RFC 1939 (Post Office Protocol - Version 3). The algorithm
+used to generate the hash is the Message-Digest 5 Algorithm as described and
+implemented in RFC 1321.
+
+
+Security
+--------
+Face it. The internet is far from secure. An eavesdropper on a backbone can
+very easily get lots of traffic, and hence lots of useless and useful data
+pretty easily these days. Packet anaylsing programs are available as freeware
+on the net, so getting those passwords isn't difficult.
+
+Even on a private network, APOP may have its uses - Steve in development may
+have a grudge against the director of your company, so starts eavesdropping
+to see if he can break his directors account.
+
+
+Problems
+--------
+APOP isn't that widely available in clients yet (according to RFC 1957), so
+don't force it upon users unless you know they can use APOP. The only UNIX
+client I know with APOP support is the freely available 'fetchmail'. Windows
+clients include Eudora.
+
+
+Implementation in vchkpw
+------------------------
+There are two classes of user in vchkpw - real users (ie, those users who can
+log into the system or at the least have an entry in /etc/passwd), and virtual
+users (aka POP users, those users who are only known to the mail system via
+vchkpwi - they have no entry in /etc/passwd, effectively then being unable to
+log into the system).
+
+qmail-popup sends no indication of the authentication type used to the password
+checking program (be it checkpassword, vchkpw, or other), so if the program
+has not been told previously what auth type this user was going to use, it will
+attempt both.
+
+APOP with real users: APOP secrets are containted within a file called
+	apop-secrets in /etc. This file contains *IN PLAINTEXT* the username,
+	a colon, and the secret. For example, for user chris with a secret
+	of pinkfloyd, his apop-secrets entry would read:
+		chris:pinkfloyd
+
+	If a user is in /etc/apop-secrets, then he/she is marked as using
+	APOP, so authentication via USER/PASS will not work. Users not in
+	/etc/apop-secrets will be marked as using normal USER/PASS style
+	authentication.
+
+	This file should be owned by root and read/write only to root. If
+	system security is ever compromised, then this file should be treated
+	with suspision.
+
+
+APOP with virtual users: The virtual password file, vpasswd, is used to hold
+	both USER/PASS and APOP information. To differentiate between the two,
+	vchkpw looks at the UID field to decide what authentication to use.
+		If uid is empty or 0, both authentication methods will be
+			attempted - APOP first, then USER/PASS. If APOP
+			succeeds, it won't attempt USER/PASS.
+		If uid is 1, then only the USER/PASS authentication will be
+			attempted.
+		If uid is 2, then only the APOP authentication will be
+			attempted.
+	The password field will either hold an APOP secret in plaintext, or
+	a encrypted password for USER/PASS authentication.
+
+	Note: The UID and GID fields are *NOT* interpreted as uid/gid fields.
+	Whilst the format of vpasswd is much like that of passwd, the only
+	fields that act in the same way are:
+		1: Username
+		2: Password/secret
+		6: Home directory (location of maildrop)
+	The UID and GID fields are being used as flags (although GID is
+	currently unused and reserved for future use).
+
+	Below are four examples from a vpasswd file:
+  chris:pinkfloyd:2:::/home/popusers/domains/acme.cej.net/chris:NOLOGIN
+  chris:pinkfloyd:0:::/home/popusers/domains/acme.cej.net/chris:NOLOGIN
+  chris:Th5gh36YhsvHG:1:::/home/popusers/domains/acme.cej.net/chris:NOLOGIN
+  chris:Th5gh36YhsvHG::::/home/popusers/domains/acme.cej.net/chris:NOLOGIN
+
+	The first one has the UID set to 2, which indicates that this entry
+	should use APOP.
+
+	The second entry has a UID of 0, indicating a "don't care" type
+	condition. APOP authentication will be attempted first, which will
+	probably be successful if the client sent a digest based on
+	'pinkfloyd'.
+
+	The third entry has a UID of 1, so only user/password authentication
+	will be attempted.
+
+	The fourth entry has no UID given, which is the same as a UID of 0, so
+	both authentication types will be tested. If the user at the remote
+	end has used APOP with a digest based on 'Th5gh36YhsvHG', it will
+	succeed. Alternatively, if the password he sends, once encrypted with
+	crypt(), returns Th5gh36YhsvHG, it will also pass.
+
+
+Compiling vchkpw
+----------------
+It is possible to compile vchkpw with support for only user/pass, only APOP,
+or support for both.
+
+If you choose APOP only:
+	- All real users should have a secret in /etc/apop-secrets (if you
+		want them to log in via POP). Any that are not will be bounced
+		out and authorization will fail.
+	- For virtual users, the UID field is ignored - all connections will
+		be checked against APOP only.
+
+If you choose passwd only:
+	- Nothing to do for real users - the password used is the same one as
+		in /etc/passwd.
+	- For virtual users, the UID field is ignored - all connections will
+		checked against user/passwd pairs only
+
+If both are compiled:
+	- For real users, apop-secrets should contain users who you want to
+		have login with apop. Users in apop-secrets cannot log in 
+		using user/pass pairs. Users not in apop-secrets cannot log in
+		using apop.
+	- For virtual users, the UID field is used as described above.
+
+
+There are two entries in the Makefile that are important to APOP. From the
+Makefile,
+
+# Do you want to use APOP? If so, define this to be the full pathname of the
+# file containing the APOP secrets. Read the README.APOP file for more
+# information.
+APOP=-DAPOP=\"/etc/apop-secrets\"
+# You will also need to uncomment this line
+MDLIB=md5.o
+
+The APOP define allows you to change the name and location of the APOP secrets
+file (for real users).
+
+The MDLIB define ensures that the MD5 routines are compiled and linked in
+correctly.
+
+If you do not want APOP, then comment both of these lines out. If you do want
+APOP, then both of these lines should be uncommented.
+
+Further on in the Makefile,
+
+# You need at least one authentication meachanism. Defining this will make
+# vchkpw use standard user/password authentication. You can define both this
+# and APOP if you want both mechanisms available.
+PASSWD=-DPASSWD
+
+If commented out, then user/pass authentication (via crypt()) will be left out,
+effectively leaving an APOP only system. If both this define and the APOP
+defines are commented out, then on making there will probably be a complaint
+as you need at least *ONE* of the mechanisms.
+
+
+Bugs, &tc...
+------------
+This has needed an overhaul of most of vchkpw, so I won't claim that this is
+bug-free. If you have any problems or can think of ways to improve this
+implementation, then contact me at: sixie@nccnet.co.uk
+
+Chris Johnson, April 1998
+
+-------------------------------------------------------------------------------

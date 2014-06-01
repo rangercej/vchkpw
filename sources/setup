@@ -1,0 +1,247 @@
+#!/bin/sh
+##############################################################################
+##
+## $Id: setup,v 1.1 1998/06/16 21:12:11 chris Exp $
+## This gets basic installation out of the way.
+##
+##############################################################################
+
+VPOPUSER=vpopmail
+VPOPGRP=vchkpw
+
+##############################################################################
+## No user servicable parts below
+##############################################################################
+
+startdir=`pwd`
+cd `dirname $0`
+setupdir=`pwd`
+
+umask 077
+
+if [ x`whoami` != xroot ]
+then
+	echo 'You should be root to run this.'
+	exit
+fi
+
+if [ "x$1" != "xgo" ]
+then
+	cat <<-!
+	-----------------------------------------------------------------------
+
+	Hmm...you haven't read the documentation. If you had, you'd know the
+	right way to run this script :-)
+
+	[hint: for the impatient -- run this script as "$0 go"]
+
+	-----------------------------------------------------------------------
+	!
+	exit
+fi
+
+cat <<-!
+	-----------------------------------------------------------------------
+
+	Vchkpw 3.0
+	==========
+
+	(Standard blurb)...Welcome to version 3 of this virtual domains
+	packages. There are several enhancements and improvements to this
+	since the last release. This program is one of them :-)
+
+	I am assuming you are using the "$VPOPUSER" user. If you are not, then
+	you will have to change some information in various scripts. Please
+	confirm you are using the $VPOPUSER user, by typing 'y'.
+
+	If you have no idea what I'm on about, type 'n', and read the 
+	documentation!
+
+	-----------------------------------------------------------------------
+!
+
+echo -n "Are you using the $VPOPUSER user: "
+read reply
+if [ "x$reply" != 'xy' ]
+then
+	cat <<!
+-----------------------------------------------------------------------
+
+Okay, so you aren't sure what you're doing or you've decided
+not to use the vpopmail user. If it is the latter, then you
+will need to modify:
+	./setup (this script)
+	bin/vadduser
+	bin/vdeluser
+	bin/vpasswd
+	src/Makefile
+and if you are going to be using the CGI as well,
+	cgi/src/Makefile
+	cgi/lib/qm-config.pl
+
+-----------------------------------------------------------------------
+!
+	exit
+fi
+
+echo "Okay...checking to see if $VPOPUSER exists in /etc/passwd..."
+grep "^$VPOPUSER\:" /etc/passwd > /dev/null 2>&1
+if [ $? -eq 1 ]
+then
+	cat <<-!
+	-----------------------------------------------------------------------
+
+	Hmm...I couldn't find $VPOPUSER in /etc/passwd. You need to add the
+	user before I can continue. As $VPOPUSER is never going to be used
+	as a login account, you can give the user an invalid shell and a 
+	locked password to make it secure.
+
+	-----------------------------------------------------------------------
+!
+	exit
+fi
+
+grep "^$VPOPGRP\:\:[0-9]*\:" /etc/group > /dev/null 2>&1
+if [ $? -eq 1 ]
+then
+	cat <<-!
+	-----------------------------------------------------------------------
+
+	Hmm...I couldn't find $VPOPGRP in /etc/group. You need to add the
+	group before I can continue. 
+
+	-----------------------------------------------------------------------
+!
+	exit
+fi
+
+details=`grep "^$VPOPUSER\:" /etc/passwd`
+uid=`echo $details | cut -d: -f3`
+gid=`echo $details | cut -d: -f4`
+vhome=`echo $details | cut -d: -f6`
+
+cd $vhome > /dev/null
+if [ x`pwd` != "x$vhome" ]
+then
+	cat <<-!
+	-----------------------------------------------------------------------
+
+	Hmm...I couldn't change to $VOPUSER's home directory ($vhome).
+	Sorry, I can't continue.
+
+	-----------------------------------------------------------------------
+!
+	exit
+fi
+
+if [ -f bin/vchkpw ]
+then
+	cat <<-!
+	-----------------------------------------------------------------------
+
+	I've found that $vhome/bin/vchkpw already exists -- this
+	this implies you are upgrading from an older version. To ensure that
+	during the install deliveries are successful, I recommend you stop
+	qmail. (90% of the time it will probably be okay *BUT* it is safer
+	if no deliveries come in).
+	
+	-----------------------------------------------------------------------
+!
+	echo -n 'Do you want to continue with the installation? (y/n) '
+	read reply
+	if [ "x$reply" != "xy" ]
+	then
+		echo ''
+		echo 'Okay...aborting the install. Now may be a good time to'
+		echo 'stop qmail and rerun setup.'
+		echo ''
+		exit
+	fi
+
+	echo 'About to make a backup of the previous version...'
+	olddir=old
+	reply=fish
+	while [ -d "$olddir" ] && [ "x$reply" != "x" ]
+	do
+		cat <<-!
+	-----------------------------------------------------------------------
+
+	I've already found a directory called "$olddir". Can I use this 
+	safely? If not, enter the name of the directory I can use below, else
+	just hit enter. CAUTION: The contents of the directory will be deleted.
+
+	-----------------------------------------------------------------------
+!
+		echo -n "Directory for backup? (default: `pwd`/$olddir): "
+		read reply
+		if [ "x$reply" != "x" ]
+		then
+			olddir=$reply
+		fi
+	done
+	rm -rf $olddir
+	mkdir $olddir
+	cp bin/* $olddir
+else
+	echo "Okay...creating directory tree under `pwd`..."
+	mkdir bin
+	mkdir domains
+	mkdir users
+fi
+
+cd $setupdir
+
+cat <<-!
+	-----------------------------------------------------------------------
+
+	I'm about to make the source. If you haven't gone through the make
+	file and checked it is all okay, then answer 'y' to the question
+	below. If you answer anything else, the source will be built.
+
+	BTW, I'll start the vi editor. If you aren't happy with this, Ctrl-C
+	now, edit the makefile using your favourite editor, then rerun this
+	program.
+
+	-----------------------------------------------------------------------
+!
+
+echo -n 'Edit the makefile before the build? '
+read reply
+if [ "x$reply" = "xy" ]
+then
+	vi src/Makefile
+fi
+
+echo 'Okay...about to make the source....'
+trap "" 1 2 3 15
+cd src
+make
+make copy
+
+echo "Copying programs to $vhome/bin..."
+cd ../bin
+for i in ../bin/*
+do
+	cp $i $vhome/bin
+done
+
+echo "Changing owner and group of $vhome to $VPOPUSER.$vgroup..."
+chown -R $VPOPUSER $vhome
+chgrp -R $VPOPGRP $vhome
+
+cat <<-!
+	-----------------------------------------------------------------------
+
+	Install complete!
+
+	All should be complete now. For setting up domains, &tc read the 
+	HOWTO's. Also consult Vchkpw.doc for more information.
+
+	Please send all bug reports to: sixie@nccnet.co.uk
+
+	Enjoy!
+
+	Chris J, April 1998
+
+	-----------------------------------------------------------------------
+!

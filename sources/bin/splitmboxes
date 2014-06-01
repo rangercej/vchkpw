@@ -1,0 +1,153 @@
+#!/bin/sh
+#############################################################################
+##
+## $Id: splitmboxes,v 1.1 1998/06/16 21:07:29 chris Exp $
+## Split a mailbox up into a Maildir
+##
+## Chris Johnson, Jan 1998
+##
+#############################################################################
+##
+## WARNING! This program comes with no warranty, so USE AT YOUR OWN RISK!!
+##
+#############################################################################
+
+echo ''
+echo 'READ THE COMMENTS IN THIS PROGRAM FIRST BEFORE RUNNING IT!'
+echo ''
+echo 'There are some bits you may to to check and change. If you run this'
+echo 'as is, then dont come running to me when something breaks.'
+echo ''
+echo 'Anyhow, this script comes with no warranty anyway, so use at your'
+echo 'own risk...I havent tested it :) - All I can vouch for is that on'
+echo 'my system this script runs correctly (Linux 2.0.29, single user'
+echo 'box, with about 3 or 4 users with mailboxes of roughly 3k in size :)'
+echo ''
+echo 'If youre sure you want to continue, then you can remove the "exit"'
+echo 'below thats stopping you getting any further :)'
+echo ''
+echo 'Chris J, Jan 1998.'
+echo ''
+exit
+
+#
+# Initial clean up...
+#
+rm -rf /tmp/failed_maildirs > /dev/null 2>&1
+
+for i in `grep -v '\:\*\:' /etc/passwd | cut -d: -f1`
+do
+	#
+	# Get the users UID - this works on linux...if it dosen't work your
+	# system try changing it to:
+	#	 uid=`grep -v '^$i\: /etc/passwd | cut -d: -f3`
+	#
+	uid=`id -u $i`
+	#
+	# Change the 100 below if users start later on... usually < 100 are
+	# special users, which you don't really want to muck with. Ditto
+	# similar with the 5000...
+	#
+	if [ $uid -ge 100 ] && [ $uid -lt 5000 ]
+	then
+		#
+		# This changes to the users home directory. If they don't 
+		# have one (then why ?!) it creates a directory in
+		# /tmp/failed_maildirs and places the maildir there. 99 times
+		# out of 100, it will end up empty (as where is Mailbox?). The
+		# 1 time is if you're still using /var/spool/mail, as the user
+		# may have a mailbox there.
+		#
+		homedir=`grep "^$i\:" /etc/passwd | cut -d: -f6`
+		if [ "x$homedir" = "x" ]
+		then
+			echo "==> User $i ($uid) has no home directory ?!"
+			if [ ! -d /tmp/failed_maildirs ]
+			then
+				mkdir /tmp/failed_maildirs
+			fi
+			cd /tmp/failed_maildirs
+			mkdir $i
+			cd $i
+		else
+			cd $homedir
+		fi
+		#
+		# Create the Maildir and a .qmail if it dosen't already
+		# exist...
+		#
+		if [ ! -d Maildir ]
+		then
+			maildirmake ./Maildir
+			if [ -f .qmail ]
+			then
+				mv .qmail .qmail.old
+			fi
+			echo './Maildir/' > .qmail
+		fi
+		#
+		# This gets the mail from $HOME/Mailbox...if still using
+		# /var/spool/mail, change 'Mailbox' to '/var/spool/mail/$i'
+		# below in both the 'if' and before the 'awk'. 
+		#
+		# The awk script is the bit that splits the mailbox up. You
+		# may well need to change the line beginning 'host = ' to that
+		# of your own machine!
+		#
+		if [ -f Mailbox ]
+		then
+			echo "====> About to process ${i}'s ($uid) mailbox..."
+			cat Mailbox | awk '
+				BEGIN { 
+					print "Processing ..."
+					file = systime()
+					host = "infinitum"
+					CONVFMT = "%d"
+				}
+
+				/^From / { 
+					file++
+					sfile = file ""
+					mfile = "Maildir/new/" sfile ".1542." host
+					printf "New message found - filename is %s\n",mfile
+				}
+				$1 == ">From" {
+					$1 = "From"
+					printf "%s\n", $0 > mfile
+				}
+				!/^From / {
+					printf "%s\n", $0 > mfile
+				}
+	
+				END { print "Done processing file" }
+			'
+		fi
+		#
+		# This bit rem'd out on purpose...but if you want to you can
+		# uncomment it so it executes - it will delete the original
+		# mailbox after the splitting. (If the mailbox is elsewhere,
+		# like /var/spool/mail, then change the line accordingly).
+		#
+		# rm -f Mailbox
+
+		#
+		# Fix file ownerships and permissions...maybe more a paranoid
+		# check that anything else :)
+		#
+		chown -R $i Maildir .qmail*
+		chgrp -R users Maildir .qmail*
+		chmod 600 .qmail*
+		find Maildir -type f -exec chmod 600 {} \;
+		find Maildir -type d -exec chmod 700 {} \;
+	fi
+done
+
+echo "Conversions done - all mailboxes still exist...if you want to delete"
+echo "then, then one easy way to do it is to run the following:"
+echo "	find / -name Mailbox -exec rm {} \;"
+echo ""
+echo "This is brute force and may end up deleteing mailboxes you dont want"
+echo "deleted! (eg /var/qmail/alias/Mailbox), but I can't be asked to write"
+echo "a more sophisticated script...you should be able to use portions of"
+echo "this to slam into your own script to do it safely."
+echo ""
