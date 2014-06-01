@@ -1,0 +1,40 @@
+$Id: CREDITS,v 1.2 1998/06/23 19:43:55 chris Exp $
+
+Credits
+=======
+
+Dan Bernstein (djb@pobox.com) - for qmail & checkpassword.c
+
+Tony Ellary (tony@nccnet.co.uk) - who asked me about POP and virtual domains
+	and virtual users and a whole bunch of other stuff, and got me
+	started on this lark :)
+
+Bruce Guenter (bruceg@qce.sk.ca) - lots of pointers on why not use call
+	qmail-local from a qmail-command, and a few other ideas for later
+	versions.
+
+Matthew C. Mead (mmead@goof.com) - one blindingly obvious problem with
+	calling qmail-local from a qmail-command that I totally didn't see
+	-- doh!
+
+Russel Nelson (nelson@crynwr.com) - Qmail home page, where I got a few more
+	pointers from :)
+
+All those who sent bug reports (this list is probably incomplete):
+	abernard@@aleaur.com
+	ian@@system.co.za
+	lyle@azlink.com
+	rcontaldi@ambient.net
+	RGraeber@package.com
+	richard@sei.es
+	rmc@ssi.aaum.pt
+	skamp@usa.net
+	tony@nccnet.co.uk
+	xsulla@informatics.muni.cz
+
+Everyone on the qmail mailing list (I'd give names, but theres probably
+	quite a lot, and I can't remember them anyhow. You don't know who you
+	are, but consider yourself thanked, regardless :-)
+
+A few friends at University, without which I'd have a healthier balance than
+	I do at the moment (hic).

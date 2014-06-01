@@ -1,0 +1,21 @@
+<!-- $Id: menu.tmpl,v 1.1 1998/06/16 21:27:45 chris Exp $ -->
+<HTML>
+<HEAD><TITLE>Menu for domain %%DOMAIN</TITLE></HEAD>
+<BODY>
+	<H1>Welcome, postmaster@%%DOMAIN</H1>
+	<HR>
+	<H3>What would you like to do?</H3>
+		<FORM ACTION="%%URL" METHOD=post>
+			I would like to <SELECT NAME=location>
+				<OPTION VALUE='adduser'>add a user
+				<OPTION VALUE='deluser'>delete a user
+				<OPTION VALUE='chpasswd'>change a password
+			</SELECT>
+			%%AUTH
+			<INPUT TYPE=submit VALUE="Do it!">
+		</FORM>
+	</CENTER>
+	<HR>
+	<B><I>REMEMBER:</I> <A HREF="%%URL">Log out</A></B> after use!!
+</BODY>
+</HTML>

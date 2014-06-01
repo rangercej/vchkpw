@@ -145,9 +145,6 @@ struct passwd* pop_user_exist(char *user, char *host, char *prefix, char *bounce
 	char filename[1024];
 	char localuser[1024];
 
-	int i=0;
-	while (user[i] != 0) { user[i] = tolower(user[i]); i++; }
-
 	if ((pw_data=getpwnam(POPUSER)) == NULL) {
 		failperm("POP users have not been set up correctly on this system. Please\ncontact %s with this problem. (#4.3.0)\n",ADMIN);
 	}

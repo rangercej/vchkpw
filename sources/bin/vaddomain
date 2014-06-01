@@ -1,0 +1,138 @@
+#!/bin/sh
+##############################################################################
+##
+## $Id: vaddomain,v 1.2 1998/06/18 08:31:35 chris Exp $
+## Add a virtual domain
+##
+## Chris Johnson, Copyright (C) April 1998
+## Email: sixie@nccnet.co.uk
+##
+##    This program is free software; you can redistribute it and/or modify
+##    it under the terms of the GNU General Public License as published by
+##    the Free Software Foundation; either version 2 of the License, or
+##    (at your option) any later version.
+##
+##    This program is distributed in the hope that it will be useful,
+##    but WITHOUT ANY WARRANTY; without even the implied warranty of
+##    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+##    GNU General Public License for more details.
+##
+##    You should have received a copy of the GNU General Public License
+##    along with this program; if not, write to the Free Software
+##    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+##
+##############################################################################
+trap '' 1 2 3 15
+
+PATH="`dirname $0`:$PATH"
+export PATH
+
+POPACCT=vpopmail
+POPGRP=vchkpw
+
+# If you don't have ps -ax (BSD ps), and have SysV style ps, you may need to
+# change this line
+QMPID=`ps -ax | grep qmail-send | grep -v grep | awk '{ print $1 }'`
+
+QMAILHOME=/var/qmail
+
+###############################################################################
+## No user servicable parts below
+###############################################################################
+
+if [ "x`whoami`" != "xroot" ]
+then
+	echo 'You must be root to run this.'
+	exit
+fi
+
+if [ $# -ne 1 ]
+then
+	echo "Syntax: `basename $0` <domainname> [apop]"
+	echo ""
+	echo "If 'apop' is specified, then the postmaster account will"
+	echo "use APOP authentication instead of user/password auth."
+	echo ""
+	exit
+fi
+DOMAIN=$1
+
+grep "^${POPACCT}\:" /etc/passwd > /dev/null 2>&1
+if [ $? -ne 0 ]
+then
+	echo "Cannot find master POP user $POPACCT in /etc/passwd"
+	exit
+fi
+
+if [ ! -f $QMAILHOME/bin/qmail-send ]
+then
+	echo "Cannot find qmail under $QMAILHOME - I can not continue"
+	exit
+fi
+
+std=`pwd`
+
+POPHOME=`grep "^${POPACCT}\:" /etc/passwd | cut -d: -f6`
+VUID=`grep "^${POPACCT}\:" /etc/passwd | cut -d: -f3`
+VGID=`grep "^${POPACCT}\:" /etc/passwd | cut -d: -f3`
+
+cd $QMAILHOME
+echo "About to add the domain $DOMAIN..."
+
+cd control
+echo "    Adding entry to control/virtualdomains..."
+if [ -f virtualdomains ]
+then
+	cp virtualdomains virtualdomains.bak
+fi
+echo "${DOMAIN}:${DOMAIN}" >> virtualdomains
+
+echo "    Adding entry to control/rcpthosts..."
+if [ -f rcpthosts ]
+then
+	cp rcpthosts rcpthosts.bak
+fi
+echo "${DOMAIN}" >> rcpthosts
+cd ..
+
+cd users
+echo "    Adding entry to users/assign..."
+if [ -f assign ]
+then
+	cp assign assign.bak
+fi
+
+grep -v '^\.' assign > assign.vchkpw
+echo "+${DOMAIN}-:${DOMAIN}:${VUID}:${VGID}:${POPHOME}/domains/${DOMAIN}:-::" >> assign.vchkpw
+echo '.' >> assign.vchkpw
+mv assign.vchkpw assign
+$QMAILHOME/bin/qmail-newu
+
+echo "    Adding home directory..."
+cd $POPHOME
+cd domains
+mkdir $DOMAIN
+cd $DOMAIN
+
+echo "    Adding delivery instructions..."
+echo "| ${POPHOME}/bin/vdelivermail '' ${POPHOME}/domains/${DOMAIN}/postmaster" > .qmail-default
+
+echo "    Creating postmaster account..."
+vadduser postmaster@${DOMAIN} $2
+
+echo "    Fixing ownership and permissions..."
+chown -R $POPACCT ${POPHOME}/domains/${DOMAIN}
+chgrp -R $POPGRP ${POPHOME}/domains/${DOMAIN}
+chmod -R g-rwx ${POPHOME}/domains/${DOMAIN}
+chmod -R o-rwx ${POPHOME}/domains/${DOMAIN}
+
+echo "    Sending qmail-send a SIGHUP..."
+kill -HUP $QMPID
+
+cat <<-!
+	Done.
+
+	NOTE: You must set up an MX record in your DNS manually - I cannot do
+	this at the moment - it can be a too site-specific task to automate
+	simply.
+!

@@ -1,0 +1,31 @@
+#!/bin/sh
+##############################################################################
+##
+## $Id: fixvpasswd,v 1.1 1998/06/16 21:07:04 chris Exp $
+## Fix virtual password files so there is a value in the UID and GID fields.
+##
+## Chris Johnson, June 1998. This is public domain.
+##
+##############################################################################
+trap '' 1 2 3 15
+
+if [ $# -eq 0 ]
+then
+	echo "Syntax: `basename $0` <file list>"
+	echo ''
+	echo 'Each file should be a password file. This script will rewrite the'
+	echo 'file so each user have valid values in the uid and gid fields.'
+	echo ''
+	echo 'Note: In vchkpw, the UID and GID fields are *NOT* used as UIDs or'
+	echo '	GIDs, but as flags for the mail system to know how to handle'
+	echo '	that user.'
+	exit
+fi
+
+for vp in $*
+do
+	echo "Changing file $vp (backup of old file as $vp.old)..."
+	sed 's/^\(.*:.*\):.*:.*:\(.*:.*:.*\)$/\1:0:0:\2/' < $vp > $vp.new
+	cp -f $vp $vp.old
+	mv -f $vp.new $vp
+done

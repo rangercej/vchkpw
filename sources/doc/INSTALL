@@ -1,0 +1,100 @@
+$Id: INSTALL,v 1.1 1998/06/16 21:15:31 chris Exp $
+
+Virtual POP users
+=================
+Chris Johnson, sixie@nccnet.co.uk, April 1998
+
+** HAVE YOU READ THE README?? **
+
+How to install
+--------------
+Remember! Read each instruction *fully* before you follow it, so you know
+exactly whats going on!! Read Popuser-HOWTO and Popdomain-HOWTO to help you
+decide what to do about home directories, locations for binaries &tc... also
+read section A in Vchkpw.doc.
+	
+Pre-requisites:
+	- You're running qmail
+	- You're using Maildirs - if you haven't changed to Maildir's, then
+		you've got little chance of this working. Read about Maildir's
+		in INSTALL.mbox (in the Qmail source tree), and also the man
+		page maildir(5). See also step (8) in this document, and 
+		5.3 in the Qmail FAQ. Users who will not be using POP do not
+		need Maildir's, but why confuse things by running both Maildir
+		and mbox's on the same server?
+
+0. RTFM (see, I'm giving you a chance here)
+
+1. Unpack the archive into any old directory (it'll create its own vchkpw
+directory underneath). But seeing as you're reading this, I guess you've
+got this far :-)
+
+2. Add a new user to your system of 'vpopmail' (or, if you changed the user
+name in the Makefile, of that user). Shell can be whatever you want (I use
+/bin/true, as it isn't used for a login). Password can be locked. Also, if
+you prefer good security, put the user in a seperate group by itself. This
+isn't essential, but it helps security.
+
+The home directory should be set to the top directory of the virtual domains
+hiearachy.
+
+This user will be used by all the programs as the instructions of what user
+to run as, and where it should put the mail. The UID & GID can be suitably
+high (10000?)
+
+3. Read and edit the Makefile! Theres a few bits that will need chaning, add
+maybe a couple of other things you want to change.
+
+4. You have a choice: run the 'setup' script (which can be found at the top
+level of where you installed this program), or continue the installation
+manually. If you choose to run setup, then you need to invoke setup as
+"setup go", else it refuses to run.
+
+Setup will check the sanity of your system (ie, have you added the vpopmail
+user), then setup the domains hierachy (as explained in Vchkpw.doc). Finally,
+it will make and install the programs.
+
+5. If you ran setup, skip to step 8.
+
+6. Check the scripts vadduser, vdeluser and  vpasswd. Make sure that the
+POPACCT line is using the correct username. If not, change it to the same as
+the Makefile.
+
+7. Do a make, then, if no errors, a make install (if you're putting the
+binaries into vpopmail's tree, then make sure the directory you want
+exists!)
+
+8. Either:
+a) Add (or edit) the inetd line for qmail-pop3d, and remove all other POP
+   daemons from the file. The qmail line needed is (ALL ON ONE LINE!!!):
+   pop3 stream tcp nowait root /usr/sbin/tcpd /var/qmail/bin/tcp-env -R
+	/var/qmail/bin/qmail-popup <your_full_hostname> <path_to_vchkpw>/vchkpw
+	/var/qmail/bin/qmail-pop3d Maildir
+
+or b) If you are using tcpserver (see the qmail FAQ, 5.1), then add the
+   following line to your system startup files (note the following lines should
+   all be on one line:
+   tcpserver 0 pop3 /var/qmail/bin/qmail-popup <your_full_hostname> 
+	<path_to_vchkpw>/vchkpw /var/qmail/bin/qmail-pop3d Maildir &
+
+9. If you modified inetd.conf, send inetd a HUP
+
+10. If you aren't already running Maildir's on your system, then you need to.
+Convert all users on the system to Maildir using splitmboxes (this dosen't
+get installed, so if you want to keep it, put it somewhere useful :) This will
+take a users mailbox, split it up accordingly, and create a .qmail file so
+mail goes to the Maildir's. The old mailboxes are kept, so if there is a
+problem, all is not lost :) You'll also need to add a .qmail file in /etc/skel
+(or whatever your local equivalent is) that contains './Maildir/', and also add
+a maildir (cd /etc/skel; maildirmake ./Maildir)  so all new users get a 
+default .qmail with instructions to deliver to Maildir :) For even more maildir
+compatability, you can replace the "./Mailbox" in the qmail-start command line
+with "./Maildir/". If you do this, then you don't need to set up a default
+.qmail file.
+
+
+Thats it!! All installed.
+
+Read the Popuser-HOWTO for information on setting up pop users
+Read the Popdomain-HOWTO for information on setting up virtual pop domains
+

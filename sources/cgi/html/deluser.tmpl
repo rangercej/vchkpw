@@ -1,0 +1,37 @@
+<!-- $Id: deluser.tmpl,v 1.1 1998/06/16 21:27:45 chris Exp $ -->
+<HTML>
+<HEAD><TITLE>%%DOMAIN: Delete a user</TITLE></HEAD>
+<BODY>
+	<H2>Delete user</H2>
+	<HR>
+	<FORM ACTION="%%URL" METHOD=post>
+		%%AUTH
+		<INPUT NAME=location VALUE=del TYPE=hidden>
+		<TABLE>
+			<TR>	<TD ALIGN=right>Select user:</TD>
+				<TD>%%USERLIST
+				</TD>
+			</TR>
+			<TR>	<TD ALIGN=right>
+					<INPUT TYPE=radio NAME=confirm VALUE=no CHECKED><BR>
+				</TD>
+				<TD>Don't delete</TD>
+			</TR>	<TD ALIGN=right>
+					<INPUT TYPE=radio NAME=confirm VALUE=yes></TD>
+				<TD>Yes, delete this user</TD>
+			</TR>
+			<TR>	<TD ALIGN=right><INPUT TYPE=reset VALUE="Clear form"></TD>
+				<TD><INPUT TYPE=submit VALUE="Delete user"></TD>
+			</TR>
+		</TABLE>
+	</FORM>
+	<HR>
+	<FORM ACTION="%%URL" METHOD=post>
+		%%AUTH
+		<INPUT NAME=location VALUE=menu TYPE=hidden>
+		<INPUT TYPE=submit VALUE="Return to menu">
+	</FORM>
+	<HR>
+	<B><I>REMEMBER:</I> <A HREF="%%URL">Log out</A></B> after use!!
+</BODY>
+</HTML>

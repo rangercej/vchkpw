@@ -1,0 +1,200 @@
+$Id: TEMPLATES,v 1.1 1998/06/16 21:25:23 chris Exp $
+------------------------------------------------------------------------------
+
+HTML Templates
+==============
+Chris Johnson, April 1998
+Email: sixie@nccnet.co.uk
+
+In order to give the site its own personality, heavy user is made of HTML
+templates. These are standard HTML pages, but with place markers for
+important information (eg, user lists, domain name, error messages &tc).
+
+There are 11 templates:
+	add_fail.tmpl		Add user failed
+	add_okay.tmpl		Add user succeeded
+	adduser.tmpl		Add user form
+	del_fail.tmpl		Delete user failed
+	del_okay.tmpl		Delete user succeeded
+	deluser.tmpl		Delete user form
+	menu.tmpl		Main menu
+	passwd.tmpl		Change password form
+	portcullus.tmpl		Authentication screen
+	pw_fail.tmpl		Change password failed
+	pw_okay.tmpl		Change password succeeded
+
+Heavy use is made of forms - there are no 'GET' requests. If a GET request
+for the CGI is made, then portcullus.tmpl is displayed. I decided to go via
+the 'POST' method as security is improved more: everything is hidden away.
+With a GET request, the authentication data, passwords &tc, would be displayed
+as part of the URL - I find this unacceptable.
+
+Because of this, it is not possible to to use <A HREF>'s on screens like the
+menu - everything has to be form based.
+
+Reading the templates should give you a good idea of how it all works. Markers
+are preceeded with %% - for example %%DOMAIN will be substituted with the name
+of the domain.
+
+The full list of markers is:
+	%%AUTH		Authentication field (should go within *every* form,
+			except for the portcullus).
+	%%DOMAIN	Name of the virtual domain (valid in every form
+			except for the portcullus).
+	%%MESSAGE	Error message (all the fail forms)
+	%%URL		The URL of the CGI (for use in <FORM ACTION=...>)
+	%%USER		User been processed (valid only on the fail and okay
+			templates).
+	%%USERLIST	Insert a select list of users in the virtual domain.
+			Will only work on adduser, deluser and passwd
+			templates.
+
+The following list is the full list of field names, with legal values, than
+can be used on hidden fields, input boxes, or select boxes.
+
+Field name	Legal values	Description
+--------------	--------------	---------------------------------------------
+check				Password check
+confirm		no		Do not delete the user
+		yes		Delete the user
+domain				Domain to process
+location	auth		Do a domain/password authentication
+		menu		Goto main menu
+		adduser		Goto adduser page
+		deluser		Goto deluser page
+		chpasswd	Goto change password page
+		add		Add the user
+		del		Delete the user
+		passuser	Change the password
+new				New password entered
+passwd				Password entered
+type		0		Current authentication type
+		1		User/Password authentication
+		2		APOP authentication
+user				The user to process
+
+
+Description of templates
+------------------------
+1. add_fail.tmpl
+----------------
+This page is displayed when adding a user fails due to a user problem.
+	Requiered fields:	location = (menu, adduser, deluser, chpasswd)
+	Mandatory tags:		%%AUTH
+	Other valid tags:	%%DOMAIN, %%MESSAGE, %%URL, %%USER
+
+2. add_okay.tmpl
+----------------
+This page is displayed when adding a user succeeded.
+	Requiered fields:	location = (menu, adduser, deluser, chpasswd)
+	Mandatory tags:		%%AUTH
+	Other valid tags:	%%DOMAIN, %%URL, %%USER
+
+3. adduser.tmpl
+---------------
+This page is the adduser form which asks for user details
+	Requiered fields:	location = add (hidden field)
+				user = <user input>
+				passwd = <user input>
+				check = <user input>
+				type = (1, 2) via radio, or force type with
+					hidden field.
+	Mandatory tags:		%%AUTH
+	Other valid tags:	%%DOMAIN, %%URL
+
+4. del_fail.tmpl
+----------------
+This page is displayed when deleting a user fails due to a user problem.
+	Requiered fields:	location = (menu, adduser, deluser, chpasswd)
+	Mandatory tags:		%%AUTH
+	Other valid tags:	%%DOMAIN, %%MESSAGE, %%URL, %%USER
+
+5. del_okay.tmpl
+----------------
+This page is displayed when deleting a user succeeded.
+	Requiered fields:	location = (menu, adduser, deluser, chpasswd)
+	Mandatory tags:		%%AUTH
+	Other valid tags:	%%DOMAIN, %%URL, %%USER
+
+6. deluser.tmpl
+---------------
+This page is the deluser form which asks for user details
+	Requiered fields:	location = del (hidden field)
+				user = <user input>, via %%USERLIST (optional)
+				confirm = (yes, no), via radio or input (can
+					force yes by making hidden field).
+	Mandatory tags:		%%AUTH
+	Other valid tags:	%%DOMAIN, %%URL, %%USERLIST
+
+7. menu.tmpl
+------------
+The page is the first page displayed after successful authentication
+	Requiered fields:	location = (menu, adduser, deluser, chpasswd)
+	Mandatory tags:		%%AUTH
+	Other valid tags:	%%DOMAIN, %%URL
+
+
+8. passwd.tmpl
+---------------
+This page is the change user form which asks for a user and a new password
+	Requiered fields:	location = passuser (hidden field)
+				user = <user input>, via %%USERLIST (optional)
+				confirm = (yes, no), via radio or input (can
+					force yes by making hidden field).
+				type = (0, 1, 2) via radio, or force type with
+					hidden field.
+	Mandatory tags:		%%AUTH
+	Other valid tags:	%%DOMAIN, %%URL, %%USERLIST
+
+9. portcullus.tmpl
+------------------
+This is the authentication page, the first page a user sees on accessing the
+CGI.
+	Requiered fields:	location = auth (hidden field)
+				domain = <user input>
+				passwd = <user input>
+	Mandatory tags:		none
+	Other valid tags:	%%DOMAIN, %%URL
+
+10. pw_fail.tmpl
+----------------
+This page is displayed when changing a password fails due to a user problem.
+	Requiered fields:	location = (menu, adduser, deluser, chpasswd)
+	Mandatory tags:		%%AUTH
+	Other valid tags:	%%DOMAIN, %%MESSAGE, %%URL, %%USER
+
+11. pw_okay.tmpl
+----------------
+This page is displayed when changing a password succeeded.
+	Requiered fields:	location = (menu, adduser, deluser, chpasswd)
+	Mandatory tags:		%%AUTH
+	Other valid tags:	%%DOMAIN, %%URL, %%USER
+
+
+Hints when writing templates
+----------------------------
+Remember: you can always have more than 1 form per-page, so creating a small
+	form of a single button to take you back to the menu can be tagged
+	onto the end of any page:
+
+	<FORM ACTION="%%URL" METHOD=post>
+		%%AUTH
+		<INPUT NAME=location VALUE=menu TYPE=hidden>
+		<INPUT TYPE=submit VALUE="Return to menu">
+	</FORM>
+
+Make the use of hidden fields if you're going to want to force things - for
+	example, if you are only ever going to be running an APOP system,
+	then in both passwd.tmpl and adduser.tmpl, the type can be forced
+	by:
+		<INPUT TYPE=hidden NAME=type VALUE=2>
+
+The %%AUTH tag must *always* appear within *every* form, the exception being
+	the portcullus. This tag inserts a hidden field that contains the
+	cookie, so every transaction can be verified as being valid.
+
+The %%USERLIST tag will insert a block of HTML that displays a selectable
+	list of users on the system. The postmaster account is filtered
+	out of the 'delete user' userlist, as this account is requiered.
+
+------------------------------------------------------------------------------

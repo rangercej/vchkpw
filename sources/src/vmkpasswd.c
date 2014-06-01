@@ -1,24 +1,45 @@
 /******************************************************************************
 **
+** $Id: vmkpasswd.c,v 1.2 1998/06/16 21:04:05 chris Exp $
 ** Creates/changes an enrypted password (up to 8 characters max)
+**
+** Chris Johnson, Copyright (C) Jan 1998
+** Email: sixie@nccnet.co.uk
+**
+**    This program is free software; you can redistribute it and/or modify
+**    it under the terms of the GNU General Public License as published by
+**    the Free Software Foundation; either version 2 of the License, or
+**    (at your option) any later version.
+**
+**    This program is distributed in the hope that it will be useful,
+**    but WITHOUT ANY WARRANTY; without even the implied warranty of
+**    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+**    GNU General Public License for more details.
+**
+**    You should have received a copy of the GNU General Public License
+**    along with this program; if not, write to the Free Software
+**    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+**
+*******************************************************************************
 **
 ** Old password is given on the command line, new password is returned on
 ** stdout - all other messages go to stderr or direct to the tty
 **
 ** Requiered by vadduser and vpasswd
 **
-** Chris Johnson, Jan 1998
-**
 ******************************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <pwd.h>
 #include <time.h>
-#include <string.h>
+#include "safestring.h"
 #ifndef POPUSER
 #define POPUSER "vpopuser"
 #endif
+
+static char rcsid[] = "$Id: vmkpasswd.c,v 1.2 1998/06/16 21:04:05 chris Exp $";
 
 char randltr(void)
 {
@@ -55,9 +76,9 @@ int main(int argc, char *argv[])
 		_exit(1);
 	} else {
 		if (argc == 2) {
-			strcpy (cur_pw,argv[1]);
+			scopy (cur_pw,argv[1],sizeof(cur_pw));
 		} else {
-			strcpy (cur_pw,"");
+			scopy (cur_pw,"",sizeof(cur_pw));
 		}
 	}
 
@@ -69,7 +90,7 @@ int main(int argc, char *argv[])
 	salt[2] = 0;
 
 	if (argc != 1) {
-		strcpy (old_passwd,getpass ("Enter old POP password: "));
+		scopy (old_passwd,getpass ("Enter old POP password: "),sizeof(old_passwd));
 		if (!*old_passwd) {
 			fputs ("Aborting change\n",stderr);
 			puts (cur_pw);
@@ -82,7 +103,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	strcpy (newpasswd,getpass ("Enter new POP password: "));
+	scopy (newpasswd,getpass ("Enter new POP password: "),sizeof(newpasswd));
 
 	if (newpasswd[0] == 0) {
 		fputs ("Cannot have NULL password...aborting\n",stderr);
@@ -98,14 +119,14 @@ int main(int argc, char *argv[])
 		}
 	}
 		
-	strcpy (andagain,getpass ("Enter new POP password again: "));
+	scopy (andagain,getpass ("Enter new POP password again: "),sizeof(andagain));
 	if (strcmp(newpasswd,andagain)) {
 		fputs ("Passwords don't match...aborting\n",stderr);
 		puts (cur_pw);
 		exit(7);
 	}
 
-	strcpy(crypted,crypt(newpasswd,salt));
+	scopy(crypted,crypt(newpasswd,salt),sizeof(crypted));
 
 	puts (crypted);
 

@@ -1,0 +1,19 @@
+<!-- $Id: pw_okay.tmpl,v 1.1 1998/06/16 21:27:45 chris Exp $ -->
+<HTML>
+<HEAD><TITLE>%%DOMAIN: Password changed okay</TITLE></HEAD>
+<BODY>
+	<H1>Password okay</H1>
+	<HR>
+	Password for <B>%%USER</B> changed successfully.<BR>
+	<HR>
+	<FORM ACTION="%%URL" METHOD=post>
+		%%AUTH
+		I would like to <SELECT NAME=location>
+			<OPTION VALUE=chpasswd>Change another password
+			<OPTION VALUE=menu>Return to the menu
+		</SELECT>
+		<INPUT TYPE=submit VALUE="Do it!">
+	</FORM>
+	<HR>
+	<B><I>REMEMBER:</I> <A HREF="%%URL">Log out</A></B> after use!!
+</BODY>

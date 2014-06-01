@@ -1,0 +1,27 @@
+<!-- $Id: portcullus.tmpl,v 1.1 1998/06/16 21:27:45 chris Exp $ -->
+<HTML>
+<HEAD><TITLE>Mail administration authorisation</TITLE></HEAD>
+<BODY>
+	<H1>The Portcullus</H1>
+	You are standing in front of the main entrance, a portcullus 
+	bars your way. Looking around for a way in, you come across a 
+	sign all covered in dirt so much, that a simple glance would 
+	have missed it. Brushing the dirt off the sign, you read it. 
+	It seems to be instructions for entry to the complex. You take 
+	in its words carfully and follow their instructions...<P>
+	<H3>Please enter your mail domain and password</H3>
+	<FORM METHOD=POST ACTION="%%URL">
+		<TABLE>
+		<TR>	<TD>Domain:</TD>
+			<TD><INPUT NAME=domain SIZE=20><BR></TD>
+		</TR>
+		<TR>	<TD>Password: </TD>
+			<TD><INPUT NAME=passwd SIZE=20 TYPE=PASSWORD><BR></TD>
+		</TR>
+		</TABLE>
+		<INPUT NAME=location TYPE=hidden VALUE=auth>
+		<INPUT TYPE=Submit VALUE="Try this combination"> 
+		<INPUT TYPE=Reset VALUE="Remove this attempt"> 
+	</FORM>
+</BODY>
+</HTML>

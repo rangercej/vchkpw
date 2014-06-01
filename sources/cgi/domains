@@ -1,0 +1,110 @@
+#!/usr/bin/perl -T
+##############################################################################
+##
+## $Id: domains,v 1.1 1998/06/16 21:18:48 chris Exp $
+## CGI to remotely maintain a virtual domain.
+##
+## Chris Johnson, Copyright (C) April 1997
+## Email: sixie@nccnet.co.uk
+##
+##    This program is free software; you can redistribute it and/or modify
+##    it under the terms of the GNU General Public License as published by
+##    the Free Software Foundation; either version 2 of the License, or
+##    (at your option) any later version.
+##
+##    This program is distributed in the hope that it will be useful,
+##    but WITHOUT ANY WARRANTY; without even the implied warranty of
+##    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+##    GNU General Public License for more details.
+##
+##    You should have received a copy of the GNU General Public License
+##    along with this program; if not, write to the Free Software
+##    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+##
+##############################################################################
+
+require "/home/chris/sys/qmail/vchkpw/devel/cgi/lib/qm-config.pl";
+require "$QMAILCGI/lib/six-cgi.pl";
+require "$QMAILCGI/lib/qm-misc.pl";
+require "$QMAILCGI/lib/qm-passwd.pl";
+
+use FileHandle;
+use IPC::Open2;
+
+&print_header;
+&init_cgi;
+
+if ( $METHOD ne 'POST' ) {
+	show_tmpl ('portcullus.tmpl',"url=$URL");
+} else {
+	if ( $FORM{'location'} eq 'auth' ) {
+		$cookie = checkpassword($FORM{'domain'}, $FORM{'passwd'}, 1);
+		if ( $cookie == 0 ) {
+			html_die ("You hear a bolt shoot open...a trap door opens beneath you and you fall into the abyss below<P>(Access denied)");
+		}
+	} else {
+		$cookie = checkcookie($FORM{'cookie'});
+		if ( $cookie == 0 ) {
+			html_die ("Authorisation check failed.");
+		}
+	}
+	$domain = substr($cookie,index($cookie,'.')+1);
+	$fullcook = "$cookie-$ENV{'REMOTE_ADDR'}";
+
+	$sub="url=$URL&auth=$cookie&domain=$domain";
+	if ( $FORM{'location'} eq 'auth' ) {
+		show_tmpl ("menu.tmpl","$sub");
+	} elsif ( $FORM{'location'} eq 'menu' ) {
+		show_tmpl ("menu.tmpl","$sub");
+	} elsif ( $FORM{'location'} eq 'chpasswd' ) {
+		$users=getusers($fullcook,$domain);
+		show_tmpl ("passwd.tmpl","$sub&userlist=$users");
+	} elsif ( $FORM{'location'} eq 'adduser' ) {
+		show_tmpl("adduser.tmpl","$sub");
+	} elsif ( $FORM{'location'} eq 'deluser' ) {
+		$users=getusers($fullcook,$domain);
+		$users=~s/postmaster//;    # They aren't allowed to zap him :)
+		$users=~s/\:\:/\:/;
+		$users=~s/^\://;
+		$users=~s/\:$//;
+		show_tmpl("deluser.tmpl","$sub&userlist=$users");
+	} elsif ( $FORM{'location'} eq 'passuser' ) {
+		if ($FORM{'check'} ne $FORM{'new'}) {
+			show_tmpl ("pw_fail.tmpl","$sub&user=$FORM{'user'}&message=You typed the check incorrectly (should match the new password)");
+		} elsif ($FORM{'new'} eq '' ) {
+			show_tmpl ("pw_fail.tmpl","$sub&user=$FORM{'user'}&message=You cannot have an empty password");
+		} elsif ($FORM{'new'} =~ /:/) {
+			show_tmpl ("pw_fail.tmpl","$sub&user=$FORM{'user'}&message=Passwords cannot use the colon");
+		} else {
+			changepassword ($fullcook,$FORM{'user'},$domain,$FORM{'new'},$FORM{'type'})
+				or html_die ("Internal Error: FATAL: Problem chaning password: $!");
+			show_tmpl ("pw_okay.tmpl","$sub&user=$FORM{'user'}");
+		}
+	} elsif ( $FORM{'location'} eq 'add' ) {
+		if ($FORM{'passwd'} ne $FORM{'check'}) {
+			show_tmpl ("add_fail.tmpl","$sub&user=$FORM{'user'}&message=You typed the check incorrectly (should match the new password)");
+		} elsif ($FORM{'passwd'} eq '') {
+			show_tmpl ("add_fail.tmpl","$sub&user=$FORM{'user'}&message=You cannot have an empty password");
+		} elsif ($FORM{'user'} eq '') {
+			show_tmpl ("add_fail.tmpl","$sub&user=$FORM{'user'}&message=You can not have an empty username!");
+		} elsif ($FORM{'user'} =~ /[^a-zA-Z0-9_\.]/) {
+			show_tmpl ("add_fail.tmpl","$sub&user=$FORM{'user'}&message=Usernames can only consist of alpha-numeric characters and/or the dot (.) and underscore (_)");
+		} elsif ($FORM{'passwd'} =~ /:/) {
+			show_tmpl ("add_fail.tmpl","$sub&user=$FORM{'user'}&message=Passwords cannot use the colon");
+		} else {
+			adduser($fullcook,$FORM{'user'},$domain,$FORM{'passwd'},$FORM{'type'})
+				or html_die ("Internal Error: FATAL: Problem adding user: $!");
+			show_tmpl ("add_okay.tmpl","$sub&user=$FORM{'user'}");
+		}
+	} elsif ( $FORM{'location'} eq 'del' ) {
+		if ($FORM{'confirm'} ne 'yes') {
+			show_tmpl("del_fail.tmpl","$sub&message=User not deleted: confirmation wasn't given");
+		} else {
+			deluser($fullcook,$FORM{'user'},$domain)
+				or html_die ("Internal Error: FATAL: Problem deleting user: $!");
+			show_tmpl ("del_okay.tmpl","$sub&user=$FORM{'user'}");
+		}
+	} else {
+		html_message ("Eeks", "Unknown location: $FORM{'location'}<BR>Are your HTML templates correct?");
+	}	
+}

@@ -273,6 +273,7 @@ int main(int argc, char *argv[])
 	char *deliverto;
 	char bounce[1024];
 	char prefix[1024];
+	int i;
 
 	if (argc > 3) {
 		failtemp ("Syntax: %s [prefix [bounceable_mail]]\n",argv[0]);

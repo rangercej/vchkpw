@@ -1,0 +1,153 @@
+#!/bin/sh
+###############################################################################
+##
+## $Id: vadduser,v 1.2 1998/06/18 08:38:05 chris Exp $
+## vadduser - 2.0
+##
+## Chris Johnson, Copyright (C) April 1998
+## Email: sixie@nccnet.co.uk
+##
+##    This program is free software; you can redistribute it and/or modify
+##    it under the terms of the GNU General Public License as published by
+##    the Free Software Foundation; either version 2 of the License, or
+##    (at your option) any later version.
+##
+##    This program is distributed in the hope that it will be useful,
+##    but WITHOUT ANY WARRANTY; without even the implied warranty of
+##    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+##    GNU General Public License for more details.
+##
+##    You should have received a copy of the GNU General Public License
+##    along with this program; if not, write to the Free Software
+##    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+##
+###############################################################################
+trap "" 1 2 3 15
+
+PATH="`dirname $0`:$PATH"
+export PATH
+
+POPACCT=vpopmail
+POPGRP=vchkpw
+
+###############################################################################
+## No user servicable parts below
+###############################################################################
+
+POPUSER=`echo $1 | cut -d@ -f1`
+echo $1 | grep '\@' > /dev/null 2>&1
+if [ $? -eq 0 ]
+then
+	HOST=`echo $1 | cut -d@ -f2`
+else
+	HOST='';
+fi
+
+grep "^${POPACCT}\:" /etc/passwd > /dev/null 2>&1
+if [ $? -ne 0 ]
+then
+	echo "Cannot find master POP user $POPACCT in /etc/passwd"
+	exit 
+else
+	POPHOME=`grep "^${POPACCT}\:" /etc/passwd | cut -d: -f6`
+	if [ "x$HOST" = "x" ]
+	then
+		PASSWD="$POPHOME/vpasswd"
+		PBAK="$POPHOME/vpasswd-"
+		PLOCK="$POPHOME/.pwd.lock"
+		HOMEDIR="$POPHOME/users"
+	else
+		PASSWD="$POPHOME/domains/$HOST/vpasswd"
+		PBAK="$POPHOME/domains/$HOST/vpasswd-"
+		PLOCK="$POPHOME/domains/$HOST/.pwd.lock"
+		HOMEDIR="$POPHOME/domains/$HOST"
+	fi
+fi
+
+which vmkpasswd > /dev/null 2>&1
+if [ $? -eq 1 ]
+then
+	echo "Yikes! Cant find vmkpasswd - needed to make encrypted password"
+	echo "Aborting!!"
+	exit
+fi
+
+if [ x`whoami` != xroot ]; then
+	echo "You should be root to run this!!"
+	exit 1
+fi
+
+if [ $# -eq 0 ]
+then
+	echo "Syntax: `basename $0` <POP Login> [apop]"
+	echo ""
+	echo "If 'apop' is specified, then the user will be flagged to use"
+	echo "the APOP mechanism (RFC1939). The default is to use standard"
+	echo "user/password authentication."
+	exit
+fi
+
+if [ ! -d $HOMEDIR ]
+then
+	echo "Directory $HOMEDIR dosent exist."
+	echo "Aborting"
+	exit
+fi
+	
+
+grep "^${POPUSER}\:" $PASSWD > /dev/null 2>&1
+if [ $? -eq 0 ]
+then
+	echo "The login $POPUSER already exists."
+	exit 1
+fi
+
+if [ -f $PLOCK ]; then
+	echo "$PASSWD is locked - someone else adding users to the"
+	echo "POP system? If you are *sure* this is an error, then delete"
+	echo "the file $PLOCK"
+	exit 1
+fi
+touch $PLOCK
+
+echo ""
+echo "Adding POP user $POPUSER..."
+
+PW=""
+PIP=0
+while [ "x$PW" = "x" ]
+do
+	if [ "x$2" = "xapop" ]
+	then
+		PIP=2
+		read PW
+	else
+		PIP=1
+		PW=`vmkpasswd`
+	fi
+done
+
+echo "    Putting entry into vpasswd..."
+if [ -f $PASSWD ]
+then
+	cp $PASSWD $PBAK
+fi
+echo "$POPUSER:$PW:$PIP:0:POP User:$HOMEDIR/$POPUSER:NOLOGIN" >> $PASSWD
+chmod 644 $PASSWD
+
+rm -f $PLOCK
+
+echo "    Creating $HOMEDIR/$POPUSER..."
+mkdir $HOMEDIR/$POPUSER
+chmod 700 $HOMEDIR/$POPUSER
+echo "    Creating Maildir..."
+/var/qmail/bin/maildirmake $HOMEDIR/$POPUSER/Maildir
+chown -R $POPACCT $HOMEDIR/$POPUSER $PASSWD
+chgrp -R $POPGRP $HOMEDIR/$POPUSER $PASSWD
+chmod 600 $PASSWD
+if [ -f $PBAK ]
+then
+	chmod 600 $PBAK
+fi
+
+echo "Okay - added $1 to POP system"
