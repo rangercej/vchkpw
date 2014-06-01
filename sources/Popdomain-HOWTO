@@ -1,0 +1,210 @@
+Howto add/create virtual domains
+================================
+Chris Johnson, sixie@nccnet.co.uk, Jan 1998
+
+This is a step-by-step guide on how to add new virtual domains to your mail
+system.  A POP user is any user that does *not* have an entry in /etc/passwd
+(ie, is *not* a real user), but is in the virual user password file, vpasswd.
+
+Before we begin, I'll use the following information, so if you see these
+values whilst working your way thru' this document, you may want to
+substitute them for what you've used.
+	The POP account in /etc/passwd: vpopmail (uid: 10000)
+	The group vpopmail is in:	popusers (gid: 10000)
+	vpopmail's home directory: 	/home/popusers
+	Location of all the binaries:	/home/popusers/bin (and this is on the path)
+	Qmail installation in:		/var/qmail
+
+There are three parts to this:
+	1. Setting up a brand new mail domain
+	2. User maintenance
+	3. Possible problems
+
+1. Setting up a brand new POP domain
+------------------------------------
+This will take you through the stages to set up a virtual domains based on the
+following tree:
+	/home/popusers
+		|
+		+---- bin/	where all the binaries are located
+		|
+		+---- domains/	where all the domains will be held
+
+You will need to decide on a hostname for your POP domain, and create an MX
+record in your named configuration files. I'll use the name 'acme' for
+this example, and the entire domain is 'cej.net'. Mail is to be handled by
+infinitum.cej.net so you'll have an MX record that looks like:
+
+acme		IN	MX	10 infinitum
+
+Remember to update the serial number appropriately, then send named a HUP.
+
+You now need to let qmail know about this new domain, and that it has to 
+receive mail for it. To do this, add:
+	acme.cej.net
+to the end of control/rcpthosts, and:
+	acme.cej.net:acme.cej.net
+into control/virtualdomains
+
+This will basically make qmail take mail for (say) sales@acme.cej.net and
+remap the name to acme.cej.net-sales@inifinitum.cej.net
+
+An entry in users/assign will help get this email to where we want it now :)
+So in users/assign, add the line:
+	+acme.cej.net-:acme:10000:10000:/home/popusers/domains/acme.cej.net:-::
+
+This line basically says "take any mail for acme.cej.net-<whatever>", and
+deliver it according to the .qmail files in /home/popusers/domains/acme.cej.net
+as user 10000 and group 10000". The second field 'acme' is a unique alias for i
+this entry. The user and group ID's are that of vpopmail.
+
+If you have created a new users/assign, you will need to terminate the file
+with a single '.' at the start of the last line.
+
+Once you've put an entry into users/assign, run 'qmail-newu' to rebuild the
+database.
+
+Now give qmail-send a HUP so it refreshes itself based on the changes you've
+just made.
+
+Now create and change to /home/popusers/domains/acme.cej.net (vpopmail's home
+directory, then domains/acme.cej.net).   
+
+You need to now know how the mail is going to be delivered to its eventual
+recipient. Will it be read with POP? Or are you just acting as a spool for
+the domain, and will be sending all the mail on to a remote SMTP server for
+further processing?
+
+	a) POP approch: In /home/popusers/domains/acme.cej.net, create a
+		.qmail-default file that will process all incoming mail with
+		the contents (the next two lines should go onto ONE line):
+	    		| /home/popusers/bin/vdelivermail '' 
+				/home/popusers/domains/acme.cej.net/postmaster
+
+		The '' is just an empty string and is only for backward
+		compatability. This is only requiered if you are going to
+		put a bounced mail path in.
+
+		The path to postmaster tells vdelivermail where to deliver
+		mail directed to unknown users. If it dosen't exist, then
+		mail will bounce back. This allows you to shift the problem
+		of unknown users to the postmaster of the new domain :) Mail
+		will not bounce.
+
+		Now use vadduser to make a postmaster account and other users
+			vadduser postmaster@acme.cej.net
+
+		User from Acme corp., connecting via POP will need to give
+		their email address (eg, peter@acme.cej.net) as their POP user
+		name.
+
+	b) Remote SMTP server approach: Create a .qmail-default file in
+		/home/popusers/hosts/acme with the contents
+			./Maildir/
+
+		In /home/popusers/hosts/acme, run the command
+			maildirmake ./Maildir
+
+		All mail to the domain will now go into
+			 /home/popusers/domains/acme/Maildir
+
+		Use serialmail (from www.qmail.org) or similar program to send
+		the maildir to the remote host.
+
+		An alternative to serialmail is for the clients to use the
+		program fetchmail(1). This is not part of qmail - but a
+		seperate program (most Linux boxes have it as part of a
+		normal distribution). Fetchmail uses POP to get the mail, and
+		then feeds the uploaded email to the local MTA for delivery.
+		This is a client-triggered transaction.
+
+In both cases, change the owner and group of all the files in /home/popusers
+to that of vpopmail's...this can be achieved with:
+	cd /home/popusers
+	chown -R vpopmail *
+	chgrp -R popusers *
+
+C'est ca! You've now set the system up to deliver mail to pop domains. You can
+now go onto the second part and add users to the system (POP approach only) :)
+
+
+2. User maintenance
+-------------------
+a) Adding a user
+	To add a POP user, run the command vadduser. The syntax is:
+		vadduser <username>@<domain>
+
+	<username> can be any user name. There is a limit of XX chars on the
+	length of the username. <domain> is the mail domain. If the @<domain>
+	is omitted, then the user will be added to the default vpasswd, and
+	their mail directory will be created under users/
+
+	Example: The system has been setup as in (1), so all the POP users
+		at Acme corp. have their maildir's under 
+		home/popusers/domains/acme.cej.net. To add henry, run:
+			vadduser henry@acme.cej.net
+
+		Thats all there is to it :) All of henry's mail will now
+		goto /home/popusers/domains/acme.cej.net/henry
+
+b) Changing a user's password
+	This is simply a case of running the command vpasswd. The syntax is:
+		vpasswd <username>
+
+	<username> is an existing user in /home/popusers/vpasswd.
+
+	Example: To change henry's password:
+		vpasswd henry@acme.cej.net
+
+c) Deleting a user
+	There isn't a script for this (I may write one at some point), but
+	to delete a user, it is simply a case of removing their entry from
+	/home/popusers/domains/<domain>/vpasswd, then deleting their Maildir.
+
+	Example: To remove henry from the system
+		Remove the line that starts 'henry:' from the password
+		file /home/popusers/domains/acme.cej.net/vpasswd
+
+		Then to delete his mail point:
+			cd /home/popusers/domains/acme.cej.net
+			rm -rf henry
+
+
+3. Possible Problems
+--------------------
+Again (yes I know I'm stressing this a lot, but I don't want silly questions
+from people who haven't RTFM'd), your home directory for the POP database
+may be DIFFERENT depending on how YOU installed the system. Substitute
+/home/popusers, vpopmail and popusers with your local version as appropriate!
+
+Problems changing passwords
+	Is vmkpasswd on the path? If you've put all the binaries in
+	/home/popusers/bin, then there are two remedies:
+		1. Add /home/popusers/bin to the global path
+		2. In vadduser and vdeluser, change the line that starts
+			PATH=... so /home/popusers/bin is on it.
+
+Mail isn't being delivered
+	Do all the files in /home/popusers belong to user vpopmail and group
+	popusers? Remedy:
+		cd /home/popusers
+		chown -R vpopmail *
+		chgrp -R popusers *
+
+	Does /home/popmail belong to user vpopmail and group popusers? Remedy:
+		cd /home
+		chown vpopmail popusers
+		chgrp popusers popusers
+
+POP users can't login
+	Does their mail client support the @ character? Some mail clients
+	will act as if the @ seperates the user name from the host name. Try
+	replacing the @ with % or _.
+
+	Have you set up the domains correctly? Someone logging in as
+	peter@acme.cej.net will have /home/popusers/domains/acme.cej.net as
+	the master directory - is it looking in the right place? If the remote
+	user tries to log in as just peter, then the system will use the
+	default POP database /home/popusers/vpasswd
+
+Something else? Email me at sixie@nccnet.co.uk with a bug report :)

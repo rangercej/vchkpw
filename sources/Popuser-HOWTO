@@ -1,0 +1,157 @@
+Howto add/create new users
+==========================
+Chris Johnson, sixie@nccnet.co.uk, Jan 1998
+
+This is a step-by-step guide on how to add new POP users to your mail system.
+A POP user is any user that does *not* have an entry in /etc/passwd (ie, is
+*not* a real user), but is in the virual user password file, vpasswd.
+
+Before we begin, I'll use the following information, so if you see these
+values whilst working your way thru' this document, you may want to
+substitute them for what you've used.
+	The POP account in /etc/passwd: vpopmail (uid: 10000)
+	The group vpopmail is in:	popusers (gid: 10000)
+	vpopmail's home directory: 	/home/popusers
+	Location of all the binaries:	/home/popusers/bin (and this is on the path)
+	Qmail installation in:		/var/qmail
+
+There are three parts to this:
+	1. Setting up a brand new POP user system
+	2. User maintenance
+	3. Possible problems
+
+1. Setting up a brand new POP user system
+-----------------------------------------
+This will take you through the stages to set up a virtual POP user system
+based on the following tree:
+	/home/popusers
+		|
+		+---- bin/	where all the binaries are located
+		|
+		+---- users/	where all the POP maildir's will be held
+
+You will need to decide on a hostname for your POP users, and create an MX
+record in your named configuration files. I'll use the name 'popmail' for
+this example, and the entire domain is 'cej.net'. Mail is to be handled by
+infinitum.cej.net so you'll have an MX record that looks like:
+
+popmail		IN	MX	10 infinitum
+
+Remember to update the serial number appropriately, then send named a HUP.
+
+You now need to let qmail know about this new domain, and that it has to 
+receive mail for it. To do this, add:
+	popmail.cej.net
+to the end of control/rcpthosts, and:
+	popmail.cej.net:popmail.cej.net
+into control/virtualdomains
+
+This will basically make qmail take mail for (say) sixie@popmail.cej.net and
+remap the name to popmail.cej.net-sixie@inifinitum.cej.net
+
+An entry in users/assign will help get this email to where we want it now :)
+So in users/assign, add the line:
+	+popmail.cej.net-:popmail:10000:10000:/home/popusers/users:-::
+
+This line basically says "take any mail for popmail.cej.net-<whatever>", and
+deliver it according to the .qmail files in /home/popusers/users as user
+10000 and group 10000". The second field 'popmail' is a unique alias for this
+entry. The user and group ID's are that of vpopmail.
+
+If you have created a new users/assign, you will need to terminate the file
+with a single '.' at the start of the last line.
+
+Once you've put an entry into users/assign, run 'qmail-newu' to rebuild the
+database.
+
+Now give qmail-send a HUP so it refreshes itself based on the changes you've
+just made.
+
+Now create and change to /home/popusers/users (vpopmail's home directory, then
+users). Create a .qmail-default file with the following contents:
+	| /home/popusers/bin/vdelivermail
+
+You need a postmaster for the domain. If you don't have one, then you're
+breaking the rules! The mail RFC's require that you have a postmaster account.
+So in /home/popusers/users, create a .qmail-postmaster file with the contents:
+	&postmaster@cej.net
+
+(change the email address as needed). This will forward mail that was sent to
+postmaster@popmail.cej.net to postmaster@cej.net.
+
+The last step: change the owner and group of all the files in /home/popusers
+to that of vpopmail's...this can be achieved with:
+	cd /home/popusers
+	chown -R vpopmail *
+	chgrp -R popusers *
+
+C'est ca! You've now set the system up to deliver mail to pop users. You can
+now go onto the second part and add users to the system :)
+
+
+2. User maintenance
+-------------------
+a) Adding a user
+	To add a POP user, run the command vadduser. The syntax is:
+		vadduser <username>
+
+	<username> can be any user name. There is a limit of XX chars on the
+	length of the username.
+
+	Example: The system has been setup as in (1), so all the POP users
+		have their maildir's under /home/popusers/users. To add a
+		user called 'henry', run:
+			vadduser henry
+
+		Thats all there is to it :) All of henry's mail will now
+		goto /home/popusers/users/henry/Maildir
+
+b) Changing a user's password
+	This is simply a case of running the command vpasswd. The syntax is:
+		vpasswd <username>
+
+	<username> is an existing user in /home/popusers/vpasswd.
+
+	Example: To change henry's password:
+		vpasswd henry
+
+c) Deleting a user
+	There isn't a script for this (I may write one at some point), but
+	to delete a user, it is simply a case of removing their entry from
+	/home/popusers/vpasswd, then deleting their Maildir.
+
+	Example: To remove henry from the system
+		Remove the line that starts 'henry:' from the password
+		file /home/popusers/vpasswd
+
+		Then to delete his mail point:
+			 cd /home/popusers/users; rm -rf henry
+
+
+3. Possible Problems
+--------------------
+Problems changing passwords
+	Is vmkpasswd on the path? If you've put all the binaries in
+	/home/popusers/bin, then there are two remedies:
+		1. Add /home/popusers/bin to the global path
+		2. In vadduser and vdeluser, change the line that starts
+			PATH=... so /home/popusers/bin is on it.
+
+Mail isn't being delivered
+	Do all the files in /home/popusers belong to user vpopmail and group
+	popusers? Remedy:
+		cd /home/popusers
+		chown -R vpopmail *
+		chgrp -R popusers *
+
+	Does /home/popmail belong to user vpopmail and group popusers? Remedy:
+		cd /home
+		chown vpopmail popusers
+		chgrp popusers popusers
+
+POP users have problems logging in
+	Are they using the right username and password? The username cannot
+	be the email email address - it *must* be the bit before the '@'.
+	henry@popmail.cej.net will have a POP user name of 'henry'.
+
+Something else? Email me at sixie@nccnet.co.uk with a bug report :)

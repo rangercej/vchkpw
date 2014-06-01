@@ -1,0 +1,90 @@
+#!/bin/sh
+##############################################################################
+##
+## Change a POP user password
+##
+## Chris Johnson, January 1998
+##
+##############################################################################
+
+trap "" 1 2 3 15
+
+POPUSER=`echo $1 | cut -d@ -f1`
+echo $1 | grep '\@' > /dev/null 2>&1
+if [ $? -eq 0 ]
+then
+        HOST=`echo $1 | cut -d@ -f2`
+else
+        HOST='';
+fi
+
+POPACCT=vpopmail
+
+grep "^${POPACCT}\:" /etc/passwd > /dev/null 2>&1
+if [ $? -ne 0 ]
+then
+	echo "Cannot find master POP user $POPACCT in /etc/passwd"
+	exit 
+else
+	POPHOME=`grep "^${POPACCT}\:" /etc/passwd | cut -d: -f6`
+	if [ "x$HOST" = "x" ]
+	then
+		PASSWD="$POPHOME/vpasswd"
+		PBAK="$POPHOME/vpasswd-"
+		PLOCK="$POPHOME/.pwd.lock"
+		HOMEDIR="$POPHOME/users"
+	else
+		PASSWD="$POPHOME/domains/$HOST/vpasswd"
+		PBAK="$POPHOME/domains/$HOST/vpasswd-"
+		PLOCK="$POPHOME/domains/$HOST/.pwd.lock"
+		HOMEDIR="$POPHOME/domains/$HOST"
+	fi
+fi
+
+which vmkpasswd > /dev/null 2>&1
+if [ $? = 1 ]
+then
+	echo "Yikes! Cant find vmkpasswd - needed to make encrypted password"
+	echo "Aborting!!"
+	exit
+fi
+
+if [ `id -u` != 0 ]
+then
+	echo 'Must be root to change POP passwords.'
+	exit 1
+fi
+
+if [ $# = 0 ]
+then
+	echo "Syntax error!"
+	echo "Syntax: `basename $0` <POP username>"
+	exit 1
+fi
+
+grep "^${POPUSER}\:" $PASSWD > /dev/null 2>&1
+if [ $? -eq 1 ]
+then
+	echo "The login $POPUSER dosent exist - cant change password!"
+	exit 1
+fi
+
+if [ -f $PLOCK ]; then
+	echo "$PASSWD is locked - try again later."
+	exit 1
+fi
+touch $PLOCK
+
+POPENTRY=`grep "^$POPUSER\:" $PASSWD`
+POPPW=`echo $POPENTRY | cut -d: -f2`
+
+PW=""
+while [ "x$PW" = "x" ]
+do
+	PW=`vmkpasswd $POPPW`
+done
+
+cp $PASSWD $PBAK
+sed "s|^${POPUSER}\:${POPPW}\:|${POPUSER}\:${PW}\:|" $PBAK > $PASSWD
+
+rm -f $PLOCK
