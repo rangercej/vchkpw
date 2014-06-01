@@ -1,8 +1,8 @@
-$Id: Popdomain-HOWTO,v 1.2 1998/06/17 23:18:06 chris Exp $
+$Id: Popdomain-HOWTO,v 1.3 1998/07/27 19:35:15 chris Exp $
 
 Howto add/create virtual domains
 ================================
-Chris Johnson, sixie@nccnet.co.uk, Jan 1998
+Chris Johnson, sixie@nccnet.co.uk, Jul 1998
 
 This is a step-by-step guide on how to add new virtual domains to your mail
 system.  A POP user is any user that does *not* have an entry in /etc/passwd
@@ -35,96 +35,54 @@ following tree:
 You will need to decide on a hostname for your POP domain, and create an MX
 record in your named configuration files. I'll use the name 'acme' for
 this example, and the entire domain is 'cej.net'. Mail is to be handled by
-infinitum.cej.net so you'll have an MX record that looks like:
+infinitum.cej.net so you'll have an MX record in the DNS records for your
+domain that looks like:
 
 acme		IN	MX	10 infinitum
 
 Remember to update the serial number appropriately, then send named a HUP.
 
 You now need to let qmail know about this new domain, and that it has to 
-receive mail for it. To do this, add:
-	acme.cej.net
-to the end of control/rcpthosts, and:
-	acme.cej.net:acme.cej.net
-into control/virtualdomains
+receive mail for it. This can be achived by using the 'vaddomain' script.
+The syntax of this command is simply:
+	vaddomain <domain>
+for example,
+	vaddomain acme.cej.net
 
-This will basically make qmail take mail for (say) sales@acme.cej.net and
-remap the name to acme.cej.net-sales@inifinitum.cej.net
+This will do the following for the domain acme.cej.net:
+	- Append 'acme.cej.net' to the end of rcpthosts
+	- Append an entry 'acme.cej.net:acme.cej.net' to virtualdomains
+	- Prepend an entry for the users/assign file and runs qmail-newu
+	- Create the domain directory as ~vpopmail/domains/acme.cej.net
+	- Create a postmaster account ~vpopmail/domains/acme.cej.net/postmaster
+	  and entry in ~vpopmail/domains/acme.cej.net/vpasswd
+	- Send qmail-send a SIGHUP so it rereads virtualdomains and rcpthosts
+	- Creates a .qmail-default file with a 'catch-all' directory (which
+	  points to the postmaster's mailbox).
+	- Chmod and chown the files correctly
 
-An entry in users/assign will help get this email to where we want it now :)
-So in users/assign, add the line:
+The line in users/assign looks like:
 	+acme.cej.net-:acme:10000:10000:/home/popusers/domains/acme.cej.net:-::
 
 This line basically says "take any mail for acme.cej.net-<whatever>", and
 deliver it according to the .qmail files in /home/popusers/domains/acme.cej.net
 as user 10000 and group 10000". The second field 'acme' is a unique alias for i
-this entry. The user and group ID's are that of vpopmail.
+this entry. The user and group ID's are that of vpopmail. The user and group
+ID's should be that of vpopmail's in /etc/passwd.
 
-If you have created a new users/assign, you will need to terminate the file
-with a single '.' at the start of the last line.
-
-Once you've put an entry into users/assign, run 'qmail-newu' to rebuild the
-database.
-
-Now give qmail-send a HUP so it refreshes itself based on the changes you've
-just made.
-
-Now create and change to /home/popusers/domains/acme.cej.net (vpopmail's home
-directory, then domains/acme.cej.net).   
-
-You need to now know how the mail is going to be delivered to its eventual
-recipient. Will it be read with POP? Or are you just acting as a spool for
-the domain, and will be sending all the mail on to a remote SMTP server for
-further processing?
-
-	a) POP approch: In /home/popusers/domains/acme.cej.net, create a
-		.qmail-default file that will process all incoming mail with
-		the contents (the next two lines should go onto ONE line):
-	    		| /home/popusers/bin/vdelivermail '' 
-				/home/popusers/domains/acme.cej.net/postmaster
-
-		The '' is just an empty string and is only for backward
-		compatability. This is only requiered if you are going to
-		put a bounced mail path in.
-
-		The path to postmaster tells vdelivermail where to deliver
-		mail directed to unknown users. If it dosen't exist, then
-		mail will bounce back. This allows you to shift the problem
-		of unknown users to the postmaster of the new domain :) Mail
-		will not bounce.
-
-		Now use vadduser to make a postmaster account and other users
-			vadduser postmaster@acme.cej.net
-
-		User from Acme corp., connecting via POP will need to give
-		their email address (eg, peter@acme.cej.net) as their POP user
-		name.
-
-	b) Remote SMTP server approach: Create a .qmail-default file in
-		/home/popusers/domains/acme with the contents
-			./Maildir/
-
-		In /home/popusers/domains/acme, run the command
-			maildirmake ./Maildir
-
-		All mail to the domain will now go into
-			 /home/popusers/domains/acme/Maildir
-
-		Use serialmail (from www.qmail.org) or similar program to send
-		the maildir to the remote host.
-
-		An alternative to serialmail is for the clients to use the
-		program fetchmail(1). This is not part of qmail - but a
-		seperate program (most Linux boxes have it as part of a
-		normal distribution). Fetchmail uses POP to get the mail, and
-		then feeds the uploaded email to the local MTA for delivery.
-		This is a client-triggered transaction.
-
-In both cases, change the owner and group of all the files in /home/popusers
-to that of vpopmail's...this can be achieved with:
-	cd /home/popusers
-	chown -R vpopmail *
-	chgrp -R vchkpw *
+An alternative approach is to set the system up so all mail is delivered to
+a single Maildir for delivery via SMTP or QMTP using, for example, serialmail.
+This can be setup by adding the domain using 'vaddomain', then making the
+following modifications in ~vpopmail/domains/acme.cej.net:
+	$ rm -rf *
+	$ maildirmake Maildir
+	$ echo './Maildir/' > .qmail-default
+	$ chown -R vpopmail * .qmail-default
+	$ chgrp -R vchkpw * .qmail-default
+Then set up serialmail to trigger either from a cron job, or from a .profile
+script &tc... this particular setup will not accept incoming POP connections
+for this particular domain as all mail is expected to be sent to the remote
+host.
 
 C'est ca! You've now set the system up to deliver mail to pop domains. You can
 now go onto the second part and add users to the system (POP approach only) :)

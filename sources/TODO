@@ -1,0 +1,7 @@
+$Id: TODO,v 1.4 1999/05/24 19:33:00 chris Exp $
+
+- Update docs:
+	vchkpw.doc (add CDB stuff)
+	the Howto's (add CDB stuff)
+- Check Makefile is clean
+

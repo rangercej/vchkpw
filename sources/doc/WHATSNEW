@@ -1,19 +1,18 @@
-$Id: WHATSNEW,v 1.1 1998/06/16 21:15:31 chris Exp $
+$Id: WHATSNEW,v 1.2 1999/04/09 18:42:09 chris Exp $
 
-Vchkpw 3.0
+Vchkpw 3.5
 ==========
 
 New this version:
-	- Rewritten vchkpw.c (so if it breaks, sorry!) - functionally its the
-		same as previous versions. I've basically removed DJB's code
-		base.
-	- deluser script - this was mentioned in some of the docs, but didn't
-		actually exist. It does now.
-	- APOP support in vchkpw
-	- A CGI front end to allow postmasters of virtual domains to maintain
-		their userbase.
+	- CDB support for vpasswd files
+	- More rewritten bits to clean the code up
+	- The old RSA md5 code has been thrown out in favour of a public
+		domain implementation (so no longer is there any need for
+		the RSA license stuff)
 
 Fixed this version:
-	- Support for fgetpwent() on BSD systems. Some BSD systems don't have
-		this function which is used throughout the package. This 
-		bolt-on version should mean it compiles okay now.
+	- Potential security holes in safestring.c
+	- A bug in the setup script when checking /etc/group that caused the
+		script to announce the non-existance of the vchkpw group when
+		in reality it did actually exist
+	- Some portability problems

@@ -1,4 +1,4 @@
-$Id: INSTALL,v 1.1 1998/06/16 21:15:31 chris Exp $
+$Id: INSTALL,v 1.3 1999/04/09 19:12:57 chris Exp $
 
 Virtual POP users
 =================
@@ -22,6 +22,7 @@ Pre-requisites:
 		5.3 in the Qmail FAQ. Users who will not be using POP do not
 		need Maildir's, but why confuse things by running both Maildir
 		and mbox's on the same server?
+	- You have Dan's CDB package (if you plan to use CDB databases)
 
 0. RTFM (see, I'm giving you a chance here)
 
@@ -29,7 +30,14 @@ Pre-requisites:
 directory underneath). But seeing as you're reading this, I guess you've
 got this far :-)
 
-2. Add a new user to your system of 'vpopmail' (or, if you changed the user
+2. If you plan to use CDB's, then unpack Dan's CDB package to any place
+on the system, and build it (the package comes with an INSTALL file). You
+will then need to set up a symbolic link from vchkpw's source tree to
+the CDB source tree:
+	cd <vchkpw-root>/src
+	ln -s <path to cdb package> cdb
+
+3. Add a new user to your system of 'vpopmail' (or, if you changed the user
 name in the Makefile, of that user). Shell can be whatever you want (I use
 /bin/true, as it isn't used for a login). Password can be locked. Also, if
 you prefer good security, put the user in a seperate group by itself. This
@@ -42,10 +50,10 @@ This user will be used by all the programs as the instructions of what user
 to run as, and where it should put the mail. The UID & GID can be suitably
 high (10000?)
 
-3. Read and edit the Makefile! Theres a few bits that will need chaning, add
+4. Read and edit the Makefile! Theres a few bits that will need changing, and
 maybe a couple of other things you want to change.
 
-4. You have a choice: run the 'setup' script (which can be found at the top
+5. You have a choice: run the 'setup' script (which can be found at the top
 level of where you installed this program), or continue the installation
 manually. If you choose to run setup, then you need to invoke setup as
 "setup go", else it refuses to run.
@@ -54,17 +62,17 @@ Setup will check the sanity of your system (ie, have you added the vpopmail
 user), then setup the domains hierachy (as explained in Vchkpw.doc). Finally,
 it will make and install the programs.
 
-5. If you ran setup, skip to step 8.
+6. If you ran setup, skip to step 9.
 
-6. Check the scripts vadduser, vdeluser and  vpasswd. Make sure that the
+7. Check the scripts vadduser, vdeluser and  vpasswd. Make sure that the
 POPACCT line is using the correct username. If not, change it to the same as
 the Makefile.
 
-7. Do a make, then, if no errors, a make install (if you're putting the
+8. Do a make, then, if no errors, a make install (if you're putting the
 binaries into vpopmail's tree, then make sure the directory you want
 exists!)
 
-8. Either:
+9. Either:
 a) Add (or edit) the inetd line for qmail-pop3d, and remove all other POP
    daemons from the file. The qmail line needed is (ALL ON ONE LINE!!!):
    pop3 stream tcp nowait root /usr/sbin/tcpd /var/qmail/bin/tcp-env -R
@@ -92,9 +100,14 @@ compatability, you can replace the "./Mailbox" in the qmail-start command line
 with "./Maildir/". If you do this, then you don't need to set up a default
 .qmail file.
 
-
 Thats it!! All installed.
 
 Read the Popuser-HOWTO for information on setting up pop users
 Read the Popdomain-HOWTO for information on setting up virtual pop domains
 
+Other issues:
+-------------
+The scripts vaddomain and vdeldomain contain a line that is used to find the
+PID of qmail-send. If the following command does not return the PID of
+qmail-send, you will need to modify the scripts:
+	ps -ax | grep qmail-send | grep -v grep | awk '{ print $1 }'

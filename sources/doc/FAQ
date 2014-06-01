@@ -1,0 +1,286 @@
+$Id: FAQ,v 1.4 1999/04/09 19:12:40 chris Exp $
+-------------------------------------------------------------------------------
+vchkpw FAQ
+==========
+
+0. Blurb
+--------
+This is a 'work-in-progress', and will depend on the email I receive, and 
+anything I can think of... :) See the RCS ID at the start of this file for
+the last update.
+
+But the first question to deal with "Where do I send bug reports?". Send 
+any bug reports or problems to me at 'sixie@nccnet.co.uk'. Please send as
+much additional info as you have available - eg, output of log files, 
+output of make, output of telnet <host> 110, depending on what actually
+went wrong. Most problems seem to end up being a permissions problem...so
+check these first as given in section 3 - Common Problems.
+
+Please note that I don't have huge quantities of time, so questions that
+are answered in the documentation will likely be ignored. Anything complex
+may have to wait until a weekend (when I have more time). Don't feel gutted
+if I don't reply - there are times I just can't be asked doing anything
+apart from chilling out.
+
+You can try the vchkpw mailing list (to subscribe, send an empty mail to
+vchkpw-subscribe@nccnet.co.uk - it's a ezmlm mailing list) for support from
+other vchkpw users (it's relatively low traffic).
+
+Anyhow...on with the questions...
+
+1. Installation
+---------------
+1.1. I'm using mbox format mailboxes - do I have to change to Maildir's?
+1.2. How do I change my mbox files to Maildir's?
+1.3. The 'make' complains that crypt() can't be found
+1.4. The 'make' complains about rcsid - unused variable
+1.5. I get other error message on 'make'
+
+2. User maintenance
+-------------------
+2.1. Can I forward incoming emails to elsewhere?
+2.2. Can a virtual user recieve mail destined for a different user?
+2.3. Incoming emails are case-sensitive...help!
+2.4. Can a virtual domain have its own mailing list?
+
+3. Common problems
+------------------
+3.1. Incoming emails keep being deferred...!
+3.2. POP users can't login?
+3.3. I'm still having POP problems...HELP!
+3.4. vdelivermail crashes with a core dump when ran from the command line?
+
+4. Can vchkpw do...
+-------------------
+4.1. Does vchkpw support a hashed database for the password files?
+4.2. Does vchkpw support a PAM (Pluggable Authentication Modules)?
+4.3. Does vchkpw support IMAP?
+
+
+1. Installation
+---------------
+1.1. I'm using mbox format mailboxes - do I have to change to Maildir's?
+	Yes...vchkpw is totally Maildir based. As qmail-pop3d doesn't support
+	mboxes, you need to change any mail boxes that are accessed via POP
+	to Maildir format (you try running two different POP servers at once).
+
+1.2. How do I change my mbox files to Maildir's?
+	Use the supplied script, splitmboxes, which can be found in the bin/
+	directory of the distribution. There are also alternatives on the
+	qmail web site at www.qmail.org. If you use splitmboxes, then read
+	ALL the comments in the script - there are some parts you may wish to
+	alter the behaviour of.
+	
+1.3. The 'make' complains that crypt() can't be found
+	Change the 'LIBS=' line in src/Makefile to read 'LIBS=-lcrypt'. If
+	this still doesn't work, change the 'LD=' line to 'LD=gcc -s $(LIBS)'.
+
+1.4. The 'make' complains about rcsid - unused variable
+	This message can be safly ignored. The RCS ID is a line that identifies
+	the version of the source code. It will probably be very rare that I
+	ever ask you to give it to me, but if I do, then it can be found in 
+	any of two ways:
+		i) If RCS is installed, use the 'ident' program. For example:
+		   [122%][infinitum][doc] >ident FAQ
+		   FAQ:
+		        $Id: FAQ,v 1.4 1999/04/09 19:12:40 chris Exp $
+		   [123%][infinitum][doc] >
+		ii) Use the 'strings' program with 'grep'. For example:
+		   [125%][infinitum][doc] >strings FAQ | grep '\$Id'
+		   $Id: FAQ,v 1.4 1999/04/09 19:12:40 chris Exp $
+		   [126%][infinitum][doc] >
+
+1.5. I get other error messages on 'make'
+	Well, no-one has emailed me about them :) If you send me the output
+	of the make for up to investigate, then you may see it in the FAQ
+	at a later point in time. And maybe even a spot in the CREDITS file
+	if you're really lucky :)
+
+2. User maintenance
+-------------------
+2.1. Can I forward incoming emails to elsewhere?
+	Yes! Incoming emails go through a standard dot-qmail mechanism, each
+	domain directory (eg, domains/acme.cej.net) being treated as an
+	'alias' directory.
+	
+	Say you want to forward all email for joe@acme.cej.net to
+	joe@athome.isp.com. Simply create a file with the name '.qmail-joe',
+	with contents '&joe@athome.isp.com'. Remember to chmod and/or chown!
+
+2.2. Can a virtual user recieve mail destined for a different user?
+	Yes! Say mail for sales@acme.cej.net are to be dealt with
+	steve@acme.cej.net. Just create a 'qmail-sales' file with either:
+		i) '&steve@acme.cej.net'
+		ii) './steve/Maildir/'
+	as the contents. The first will result in another delivery through
+	the qmail system (mail forwarding). The second will do a straight
+	delivery to a Maildir.
+
+2.3. Incoming emails are case-sensitive...help!
+	There is a patch included with this distribution to make emails case
+	insensitive. The patch is a context style diff, and can be applied
+	to the code (before building) as follows:
+		i) Change to the directory containing the vchkpw source
+			code, that is, the directory containing vdelivermail.c
+		ii) Run the command: "patch < case.patch"
+	The code will now accept case insensitive emails. The patch can be
+	removed by typing 'patch -R < case.patch' if needed.
+
+2.4. Can a virtual domain have its own mailing list?
+	Yes! If, for example, you wanted to set up a mailing list,
+	newproducts@acme.cej.net, then you can just use ezmlm to make the list
+	as follows (the next three lines should be typed on one):
+		ezmlm-make ~vpopmail/domains/acme.cej.net/newproduct-list
+			~vpopmail/domains/acme.cej.net/.qmail-newproducts
+			acme.cej.net-newproducts acme.cej.net
+
+	Which equates as:
+		ezmlm-make ~vpopmail/domains/<domain>/<list directory>
+			~vpopmail/domains/<domain>/.qmail-<listname>
+			<domain>-<listname> <domain>
+
+	There is a known issue whereby the list name must bt preceeded by the
+	domain name (eg, ame.cej.net-newproducts) in the command line. This is
+	because mails are delivered via the virtualdomains mechanism, so would
+	get re-written as: <domain>-<user>@<domain>.
+
+	Because of this, the following files in the text/ directory of the 
+	ezmlm-list will need to be modified to reflect the lists functional
+	name: bottom, bounce-num, top
+
+	Mails for the list would be sent to newproducts@acme.cej.net, and
+	subscription/removal requests to newproducts-subscribe@acme.cej.net
+	and newproducts-unsubscribe@acme.cej.net respectivly.
+
+	Remember to chmod/chown the .qmail-files and the list directory to
+	that of vchkpw and vpopmail.
+
+
+3. Common problems
+------------------
+3.1. Incoming emails keep being deferred...!
+	This could be down to several problems...
+	i) Is the ownership of vpopmail's hierachy correct?
+		(chown -R vpopmail ~vpopmail; chgrp -R vchkpw ~vpopmail)
+	ii) Are the permissions correct - providing the ownership is correct,
+		then this should not be a problem. Make sure that everything
+		in the ~vpopmail/bin directory is executable.
+	iii) Is the right path for vdelivermail given in
+		 ~vpopmail/domains/<domain>/.qmail-default
+	iv) Is the users/assign entry correct for the domain? The UID and GID
+		given for the entry should be that of user vpopmail and group 
+		vchkpw. The directory should point to
+		~vpopmail/domains/<domain>.
+	v) Has users/cdb been updated with qmail-newu after modifying
+		users/assign?
+
+3.2. POP users can't login?
+	Check for...
+	i) Is qmail-popup being ran as root? The POP chain of qmail needs to
+		be able to setuid() and setgid(). This it can only do as root.
+	ii) Is the ownership of vpopmail's hierachy correct?
+		(chown -R vpopmail ~vpopmail; chgrp -R vchkpw ~vpopmail)
+	iii) Are the permissions correct - providing the ownership is correct,
+		then this should not be a problem. Make sure that everything
+		in the ~vpopmail/bin directory is executable.
+	iv) Are the users trying to use APOP when they should be using normal
+		authentication, or vice-versa?
+	v) The user is using the correct password isn't he/she?
+	vi) The user's entry in ~vpopmail/domains/<domain>/vpasswd is correct?
+		(See the file TECHNICAL)
+	vii) There may be a problem with the username. A known fault with
+		Netscape is that it assumes the user is stupid, so when they
+		enter the POP user name as <user>@<domain>, it assumes they've
+		typed in their email address, so just sends <user> to the
+		client. Try replacing the @ with % or _ and see if that fixes
+		the problem. Eudora needs a peculiar way of formatting for
+		the username - it's been reported that a format like:
+			<user>_<domain>@<domain>
+		should do the job.
+
+3.3. I'm still having POP problems...HELP!
+	vhkpw.c can be compiled with debugging enabled. When it is, it is 
+	not possible to use a POP client with the system as the debug messages	
+	can confuse the client. So the best method is to telnet in to the 
+	server directly.
+
+	To compile vchkpw with debugging, uncomment the line towards the start
+	of the program that reads "/* #define DEBUG */". Then do a make and
+	make install.
+
+	If you've never tried to telnet in to a POP server before, then here
+	is a quick tutorial, given as an example :) Before you do anything
+	else, make sure there is mail waiting to be collected by the virtual
+	user.
+		[128%][infinitum][src] >telnet localhost 110
+		Trying 127.0.0.1...
+		Connected to localhost.
+		Escape character is '^]'.
+		+OK <17975.901636533@infinitum.cej.net>
+		USER ste@acme.cej.net
+		+OK 
+		PASS wibble
+		+OK 
+		STAT
+		+OK 4 1362
+		LIST
+		+OK 
+		1 310
+		2 348
+		3 360
+		4 344
+		.
+		TOP 1 0 
+		+OK 
+		Return-Path: <chris@infinitum.cej.net>
+		Delivered-To: acme.cej.net-ste@acme.cej.net
+		Received: (qmail 965 invoked by uid 1000); 16 Jan 1998 22:58:21 -0000
+		Date: 16 Jan 1998 22:58:21 -0000
+		Message-ID: <19980116225821.964.qmail@infinitum.cej.net>
+		From: chris@infinitum.cej.net
+		To: ste@acme.cej.net
+		Subject: fish
+
+
+		.
+		QUIT
+		+OK 
+		Connection closed by foreign host.
+		[129%][infinitum][src] >
+	If you have debugging enabled, then this is a lot more verbose as it
+	gives info about various variables and where abouts it is in the
+	program. Mailing a dump of the session to me, if you have problems
+	trying to diagnose, could come in handy.
+
+	You can also use the trick Mark Delany suggests on the Qmail web site
+	(www.qmail.org):
+		printf "ste@acme.cej.net\0wibble\0\0" | ./vchkpw /bin/id 3<&0
+	This will execute /bin/id if the password matches. If you don't have
+	a command line printf, then you can use perl (next two line on one):
+		perl -e 'print "ste\@acme.cej.net\0wibble\0\0"' |
+			./vchkpw /bin/id 3<&0
+	which does much the same thing.
+
+3.4. vdelivermail crashes with a core dump when ran from the command line?
+	vdelivermail isn't designed to run from the command line - it expects
+	the environment to be setup correctly, and doesn't check for sanity.
+	So if the information it expects isn't there, it crashes. The variables
+	vdelivermail expects are: $RPLINE, $DTLINE, $EXT, $USER and $HOST. See
+	the qmail-command(8) man page for details.
+
+
+4. Can vchkpw do...
+-------------------
+4.1. Does vchkpw support a hashed database for the password files?
+	As of version 3.5, vchkpw supports CDB databases. This needs the cdb
+	package from DJB's site:
+
+4.2. Does vchkpw support a PAM (Pluggable Authentication Modules)?
+	No. As yet I haven't decided whether to implement them or not, and I
+	don't know of any patches for PAM in vchkpw.
+
+4.3. Does vchkpw support IMAP?
+	Only if there is an IMAP server that uses the same interface as 
+	qmail-pop3d. It is said that there will be one in a later release
+	of qmail. There are also some hacks of existing IMAP servers
+	floating about. See the qmail and vchkpw mailing lists.

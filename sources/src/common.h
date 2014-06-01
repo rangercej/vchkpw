@@ -1,9 +1,9 @@
-/****************************************************************************
+/*****************************************************************************
 **
-** $Id: safestring.h,v 1.3 1999/02/21 13:23:05 chris Exp $
-** Safestring -- header file
+** $Id: common.h,v 1.1 1999/02/21 13:25:33 chris Exp $
+** Header file for common routines
 **
-** Chris Johnson, Copyright (C) April 1998
+** Chris Johnson, Copyright (C) July 1998
 ** Email: sixie@nccnet.co.uk
 **
 **    This program is free software; you can redistribute it and/or modify
@@ -20,9 +20,19 @@
 **    along with this program; if not, write to the Free Software
 **    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 **
-****************************************************************************/
+*****************************************************************************/
 
-int scopy(char *, const char*, const int);
-int scat(char *, const char*, const int);
-unsigned long slen(const char *);
-int smatch(const char *, const char*);
+#include <pwd.h>
+
+#ifndef POPUSER
+#define POPUSER "vpopmail"
+#endif
+
+extern int usesyslog;
+
+void opensyslog (char *);
+void logme (char *);
+void hmm (char *,...);
+void ack (int,char *,...);
+void yikes (int,int,char *,...);
+struct passwd *vgetpw(char *, char*, struct passwd *,int);

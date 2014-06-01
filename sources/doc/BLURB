@@ -1,8 +1,8 @@
-$Id: BLURB,v 1.1 1998/06/16 21:15:31 chris Exp $
+$Id: BLURB,v 1.2 1999/04/09 19:12:24 chris Exp $
 
-vchkpw 3.0
+vchkpw 3.5
 ==========
-Chris Johnson, sixie@nccnet.co.uk, April 1998
+Chris Johnson, sixie@nccnet.co.uk, April 1999
 
 Okay...so why yet another virtual domains package? Answer: I had problems
 trying to get the currently available ones to work so I wrote my own check
@@ -28,6 +28,8 @@ Features:
 		on my own Linux box).
 
 	* Delivers direct to a Maildir for use with qmail-pop3d
+
+	* Support for CDB databases (requires CDB package from DJB)
 
 Possible things against this package:
 	* Absolutely no support whatsoever for mbox format mail boxes. This is

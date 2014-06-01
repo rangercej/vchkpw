@@ -1,5 +1,5 @@
-$Id: CREDITS,v 1.2 1998/06/23 19:43:55 chris Exp $
-
+$Id: CREDITS,v 1.5 1999/04/07 20:54:08 chris Exp $
+------------------------------------------------------------------------------
 Credits
 =======
 
@@ -20,10 +20,15 @@ Matthew C. Mead (mmead@goof.com) - one blindingly obvious problem with
 Russel Nelson (nelson@crynwr.com) - Qmail home page, where I got a few more
 	pointers from :)
 
-All those who sent bug reports (this list is probably incomplete):
-	abernard@@aleaur.com
-	ian@@system.co.za
+All those who sent bug reports, patches, enhancements and the like (this list
+is probably incomplete):
+	abernard@aleaur.com
+	charlesiii@theverge.com
+	ian@system.co.za
+	kbo@inter7.com
+	lribeiro@internetcom.com.br
 	lyle@azlink.com
+	Oliver.Stoll@inka.de
 	rcontaldi@ambient.net
 	RGraeber@package.com
 	richard@sei.es
@@ -37,4 +42,4 @@ Everyone on the qmail mailing list (I'd give names, but theres probably
 	are, but consider yourself thanked, regardless :-)
 
 A few friends at University, without which I'd have a healthier balance than
-	I do at the moment (hic).
+	I do at the moment (hic) (-8O

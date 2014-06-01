@@ -1,6 +1,6 @@
 /******************************************************************************
 **
-** $Id: vmkpasswd.c,v 1.2 1998/06/16 21:04:05 chris Exp $
+** $Id: vmkpasswd.c,v 1.7 1998/10/24 11:24:32 chris Exp $
 ** Creates/changes an enrypted password (up to 8 characters max)
 **
 ** Chris Johnson, Copyright (C) Jan 1998
@@ -35,28 +35,25 @@
 #include <pwd.h>
 #include <time.h>
 #include "safestring.h"
-#ifndef POPUSER
-#define POPUSER "vpopuser"
-#endif
 
-static char rcsid[] = "$Id: vmkpasswd.c,v 1.2 1998/06/16 21:04:05 chris Exp $";
+const static char rcsid[] = "$Id: vmkpasswd.c,v 1.7 1998/10/24 11:24:32 chris Exp $";
 
 char randltr(void)
 {
-	char rand;
+	char rnd;
 	char retval = 'a';
 
-	rand = random() % 64;
+	rnd = random() % 64;
 	
-	if (rand < 26)
-		retval = rand + 'a';
-	if (rand > 25)
-		retval = rand - 26 + 'A';
-	if (rand > 51)
-		retval = rand - 52 + '0';
-	if (rand == 62)
+	if (rnd < 26)
+		retval = rnd + 'a';
+	if (rnd > 25)
+		retval = rnd - 26 + 'A';
+	if (rnd > 51)
+		retval = rnd - 52 + '0';
+	if (rnd == 62)
 		retval = ';';
-	if (rand == 63)
+	if (rnd == 63)
 		retval = '.';
 
 	return retval;
@@ -73,7 +70,7 @@ int main(int argc, char *argv[])
 	time_t tm;
 
 	if (argc > 2) {
-		_exit(1);
+		exit(1);
 	} else {
 		if (argc == 2) {
 			scopy (cur_pw,argv[1],sizeof(cur_pw));

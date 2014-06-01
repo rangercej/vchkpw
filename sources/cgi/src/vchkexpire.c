@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-** $Id: vchkexpire.c,v 1.1 1998/06/16 21:23:04 chris Exp $
+** $Id: vchkexpire.c,v 1.4 1999/04/07 20:34:26 chris Exp $
 ** Expire cookies - part of the vchkpw CGI
 **
 ** Chris Johnson, Copyright (C) April 1998
@@ -26,6 +26,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #ifndef TIMEOUT
 #define TIMEOUT 20
@@ -37,17 +38,17 @@
 #error --------------------------------------------------------
 #endif
 
-#define ack(x,y) { fputs(x,stderr); fputs("\n",stderr); _exit(y); }
+#define ack(x,y) { fputs(x,stderr); fputs("\n",stderr); exit(y); }
 #define ick(x) { fputs(x,stderr); }
 
-static char rcsid[] = "$Id: vchkexpire.c,v 1.1 1998/06/16 21:23:04 chris Exp $";
+const static char rcsid[] = "$Id: vchkexpire.c,v 1.4 1999/04/07 20:34:26 chris Exp $";
 
 int main()
 {
 	const time_t secs = TIMEOUT * 60;
-	struct dirent **file;
+	DIR *dir;
+	struct dirent *file;
 	struct stat details;
-	int i;
 	time_t tm;
 
 	if (chdir(CGIROOT) == -1) ack ("Could not cd to CGIROOT",1);
@@ -56,18 +57,21 @@ int main()
 	time(&tm);
 	tm=tm-secs;
 
-	i = scandir(".", &file, 0, alphasort);
-	if (i < 0) ack ("Error in scandir()",3);
+	if ((dir = opendir(".")) == NULL) {
+		ack ("Yikes! Could not open cookie jar for reading.",3);
+	}
 
-	while (i--) {
-		stat(file[i]->d_name, &details);
-		if (details.st_mtime < tm) {
-			if (unlink(file[i]->d_name)) {
+	while ((file = readdir(dir)) != NULL) {
+		stat(file->d_name, &details);
+		if ((details.st_mtime < tm) && (S_ISREG (details.st_mode))) {
+			if (unlink(file->d_name)) {
 				ick ("Unlink of ");
-				ick (file[i]->d_name);
+				ick (file->d_name);
 				ick ("failed");
 			}
 		}
 	}
+	closedir(dir);
+
 	return 0;
 }

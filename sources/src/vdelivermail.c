@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-** $Id: vdelivermail.c,v 1.1 1998/06/16 21:00:49 chris Exp $
+** $Id: vdelivermail.c,v 1.2 1999/02/21 13:24:42 chris Exp $
 ** Deliver a mail to a virtual POP user - called from the .qmail-default file
 ** pointed to by users/assign
 **
@@ -35,26 +35,19 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include "safestring.h"
-#ifdef NEED_FGETPW
-#include "fgetpwent.h"
-#endif
-
-#ifndef POPUSER
-#define POPUSER "vpopmail"
-#endif
+#include "common.h"
 #ifndef ADMIN
-#define ADMIN "postmaster@this.host.plase.change.this"
-#endif
-#ifndef QMAILLOCAL
-#define QMAILLOCAL "/var/qmail/bin/qmail-local"
+#define ADMIN "postmaster@misconfigured.host"
 #endif
 
-static char rcsid[] = "$Id: vdelivermail.c,v 1.1 1998/06/16 21:00:49 chris Exp $";
+const static char rcsid[] = "$Id: vdelivermail.c,v 1.2 1999/02/21 13:24:42 chris Exp $";
 
 char tmp_file[256];
 
-/****************************************************************************
-** Delete the temporary file */
+
+/******************************************************************************
+** Delete the temporary file
+******************************************************************************/
 void delete_tmp()
 {
 	char message[1024];
@@ -78,118 +71,90 @@ void delete_tmp()
 				break;
 			default: sprintf (message,"Other code: %d",errno);
 		}
-		puts ("Yikes! Could create but can't delete temporary file!!");
-		puts (message);
+		hmm ("Yikes! Could create but can't delete temporary file!!");
+		hmm (message);
 	}
 }
 
-/****************************************************************************
-** Temporary fail (exit 111), & display message */
+/******************************************************************************
+** Temporary fail (exit 111), & display message 
+******************************************************************************/
 int failtemp(char *err, ...)
 {
 	va_list args;
+	char fmsg[2048];
 
+	puts ("Reason for failure: ");
 	va_start(args,err);
-	vprintf(err,args);
+	vsnprintf(fmsg,sizeof(fmsg),err,args);
 	va_end(args);
 
-	if (*tmp_file)
-		delete_tmp();
+	hmm (fmsg);
+	puts (fmsg);
+	if (*tmp_file) delete_tmp();
 
 	exit(111);
 }
 
-/****************************************************************************
-** Permanant fail (exit 100), & display message */
+/******************************************************************************
+** Permanant fail (exit 100), & display message
+******************************************************************************/
 int failperm(char *err, ...)
 {
+	const char *prefix = "Reason for failure: ";
 	va_list args;
+	char fmsg[2048];
+	char *ptr;
 
-	puts ("Reason for failure: ");
+	scopy (fmsg,prefix,sizeof(fmsg));
+	ptr = fmsg + slen(prefix);
 	va_start(args,err);
-	vprintf(err,args);
+	vsnprintf(ptr,sizeof(fmsg) - slen(prefix),err,args);
 	va_end(args);
 
-	if (*tmp_file)
-		delete_tmp();
+	hmm (fmsg);
+	puts (fmsg);
+	if (*tmp_file) delete_tmp();
 
 	exit(100);
 }
 
-/****************************************************************************
-** Return the password file to use for domain */
-char *which_password_file(char *domain, char *pophome)
-{
-	static char file[1024];
-	struct stat info;
-
-	scopy(file,pophome,sizeof(file));
-	scat(file,"/domains/",sizeof(file));
-	scat(file,domain,sizeof(file));
-	scat(file,"/vpasswd",sizeof(file));
-	if (stat(file,&info) == -1) {
-		scopy(file,pophome,sizeof(file));
-		scat(file,"/vpasswd",sizeof(file));
-	}
-
-	return file;
-}
-
-/****************************************************************************
-** See if the POP user exists!! */
+/******************************************************************************
+** See if the POP user exists!! 
+******************************************************************************/
 struct passwd* pop_user_exist(char *user, char *host, char *prefix, char *bounce)
 {
 	static struct passwd *pw_data;
-	FILE *openfile;
-	char pophome[1024];
-	char filename[1024];
 	char localuser[1024];
 
-	int i=0;
-	while (user[i] != 0) { user[i] = tolower(user[i]); i++; }
-
 	if ((pw_data=getpwnam(POPUSER)) == NULL) {
-		failperm("POP users have not been set up correctly on this system. Please\ncontact %s with this problem. (#4.3.0)\n",ADMIN);
+		failperm("POP users have not been set up correctly on this system.\nPlease contact %s with this problem. (#4.3.5)\n",ADMIN);
 	}
 
-	scopy(pophome,pw_data->pw_dir,sizeof(pophome));
 	if (*prefix) {
 		scopy(localuser,prefix,sizeof(localuser));
 		scat(localuser,user,sizeof(localuser));
 	} else {
 		scopy(localuser,user,sizeof(localuser));
 	}
-	scopy(filename,which_password_file(host,pophome),sizeof(filename));
-	if ((openfile = fopen(filename,"r")) == NULL) {
-		if (!*bounce) {
-			failperm("Can't confirm users existance... (#5.1.1)\n");
-		} else {
-			pw_data = NULL;
-		}
-	} else {
-		pw_data=fgetpwent(openfile);
-		while (!feof(openfile) && strcmp(localuser,pw_data->pw_name)) {
-			pw_data=fgetpwent(openfile);
-		}
-		fclose(openfile);
-		if (!pw_data && !*bounce) {
-			failperm ("Unknown local POP user %s (#5.1.1)\n",localuser);
-		}
-	}
+	pw_data = vgetpw(localuser,host,pw_data,*bounce);
+
 	return pw_data;
 }
 
-/*****************************************************************************
-** To process SIGALRM for 24hr timeout */
+/******************************************************************************
+** To process SIGALRM for 24hr timeout
+******************************************************************************/
 void sig_handler(int sig)
 {
 	delete_tmp();
 	failtemp("Message timeout (#4.3.0)\n");
 }
 
-/*****************************************************************************
-** Deliver mail to Maildir in directory 'deliverto' **
-** Follows procedure outlined in maildir(5).        */
+/******************************************************************************
+** Deliver mail to Maildir in directory 'deliverto'
+** Follows six step procedure outlined in maildir(5).
+******************************************************************************/
 void deliver_mail(char *deliverto)
 {
 	struct stat statdata;
@@ -203,12 +168,14 @@ void deliver_mail(char *deliverto)
 
 	signal(SIGALRM,sig_handler);
 
+	/*********************************************************** Step 1 **/
 	if (chdir(deliverto) == -1)
 		failtemp ("Can't change to %s (#4.2.1)\n",deliverto);
 
 	if (chdir("Maildir") == -1)
 		failtemp ("Can't change to Maildir (#4.2.1)\n");
 
+	/*********************************************************** Step 2 **/
 	gethostname(hostname,sizeof(hostname));
 	pid=getpid();
 	for (i=0; (i < 3) && (i > -1); i++) {
@@ -220,6 +187,8 @@ void deliver_mail(char *deliverto)
 				i=-2;	/* Not -1! Breaks program */
 			}
 		}
+
+		/*************************************************** Step 3 **/
 		if (i > -1) {
 			sleep(2);
 		}
@@ -227,10 +196,12 @@ void deliver_mail(char *deliverto)
 	if (i > 0)
 		failtemp ("Unable to stat maildir (#4.3.0)\n");
 	
+	/*********************************************************** Step 4 **/
 	alarm(86400);
 	if ((mailfile = creat(tmp_file,S_IREAD | S_IWRITE)) == -1)
 		failtemp ("Can't create tempfile (#4.3.0)\n");
 
+	/************************************************ Step 5 (NFS-safe) **/
 	scopy(msgbuf,getenv("RPLINE"),sizeof(msgbuf));
 	scat(msgbuf,getenv("DTLINE"),sizeof(msgbuf));
 	if (write(mailfile, msgbuf, strlen(msgbuf)) != strlen(msgbuf)) {
@@ -240,6 +211,7 @@ void deliver_mail(char *deliverto)
 
 	bytes=read(0,msgbuf,sizeof(msgbuf));
 	while (bytes > 0) {
+		/************************************************* Step 5.1 **/
 		if (write(mailfile,msgbuf,bytes) != bytes) {
 			delete_tmp();
 			failtemp ("Failed to write to tmp/ (#4.3.0)\n");
@@ -250,23 +222,31 @@ void deliver_mail(char *deliverto)
 		delete_tmp();
 		failtemp("Error occoured reading message (#4.3.0)\n");
 	}
+
+	/********************************************************* Step 5.2 **/
 	if (fsync(mailfile) == -1) {
 		delete_tmp();
 		failtemp("Unable to sync file (#4.3.0)\n");
 	}
+
+	/********************************************************* Step 5.3 **/
 	if (close(mailfile) == -1) {
 		delete_tmp();
 		failtemp("Unable to close() tmp file (#4.3.0)\n");
 	}
+
+	/*********************************************************** Step 6 **/
 	if (link(tmp_file,mailname) == -1) {
 		delete_tmp();
 		failtemp("Unable to link tmp to new (#4.3.0)\n");
 	}
 	delete_tmp();
+	hmm ("Success: mail has been delivered successfully.");
 }
 
-/*****************************************************************************
-** The main bit :) If it gets to the end of here, delivery was successful   */
+/******************************************************************************
+** The main bit :) If it gets to the end of here, delivery was successful
+******************************************************************************/
 int main(int argc, char *argv[])
 {
 	struct passwd *pw_data;
@@ -274,11 +254,12 @@ int main(int argc, char *argv[])
 	char bounce[1024];
 	char prefix[1024];
 
+	opensyslog("vdelivermail");
+	hmm ("Delivering email for %s-%s@%s",getenv("USER"),getenv("EXT"),getenv("HOST"));
+
 	if (argc > 3) {
 		failtemp ("Syntax: %s [prefix [bounceable_mail]]\n",argv[0]);
 	}
-
-	printf ("%s:%s:%s\n",getenv("EXT"),getenv("USER"),getenv("HOST"));
 
 	*bounce = 0;
 	*prefix = 0;
@@ -293,7 +274,7 @@ int main(int argc, char *argv[])
 	pw_data=pop_user_exist(getenv("EXT"),getenv("HOST"),prefix,bounce);
 
 	if (!pw_data) {
-		printf ("POP user does not exist, but will deliver to %s\n",bounce);
+		hmm ("POP user does not exist, but will deliver to %s\n",bounce);
 		deliverto = bounce;
 	} else {
 		deliverto = pw_data->pw_dir;
@@ -301,5 +282,6 @@ int main(int argc, char *argv[])
 
 	deliver_mail(deliverto);
 	
+	puts ("vdelivermail: done");
 	exit (0);
 }
